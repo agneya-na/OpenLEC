@@ -9,8 +9,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green.svg" alt="License">
-  <img src="https://img.shields.io/github/stars/oscc-project/OpenLEC?style=social" alt="Stars">
-  <img src="https://img.shields.io/github/forks/oscc-project/OpenLEC?style=social" alt="Forks">
+  <img src="https://img.shields.io/github/stars/agneya-na/OpenLEC?style=social" alt="Stars">
+  <img src="https://img.shields.io/github/forks/agneya-na/OpenLEC?style=social" alt="Forks">
 </p>
 
 <p align="center">
