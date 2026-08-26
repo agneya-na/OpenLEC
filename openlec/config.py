@@ -1,0 +1,8 @@
+import yaml
+import os
+
+def load_config(config_path: str = "config/default.yaml") -> dict:
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            return yaml.safe_load(f)
+    return {}
