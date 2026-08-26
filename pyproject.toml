@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "conformAI"
+version = "0.1.0"
+description = "Agentic Python architecture for conformAI flow"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+authors = [{name = "conformAI contributors"}]
+dependencies = [
+  "PyYAML>=6.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
