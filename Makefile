@@ -1,18 +1,22 @@
-.PHONY: all build test demo clean
+.PHONY: install build test lint clean demo
 
-all: build test
+install:
+	pip install -r requirements.txt
+	pip install -e .
 
 build:
-	mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && make -j$$(nproc)
+	python -m build
 
 test:
-	python -m pytest tests/ -v --tb=short
+	pytest tests/ -v
+
+lint:
+	flake8 openlec/ tests/
+	mypy openlec/
+
+clean:
+	rm -rf build/ dist/ *.egg-info .pytest_cache
+	find . -name "__pycache__" -exec rm -rf {} +
 
 demo:
 	python examples/run_demo.py
-
-lint:
-	python -m ruff check . --fix
-
-clean:
-	rm -rf build __pycache__ **/__pycache__ .pytest_cache
