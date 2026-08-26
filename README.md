@@ -108,3 +108,93 @@ OpenLEC/
  ├── tests/                         # Pytest Suite
  ├── config/                        # YAML Configurations
  └── docs/                          # Documentation
+
+📖 User Guide
+Before running verification flows with OpenLEC, you need to obtain the execution environment. We provide Docker images for quick setup, or you can build from source.
+
+1. Build OpenLEC from source
+Method 1: Use the OpenLEC Docker Mirror (Recommended)
+Download the latest openlec/base mirror from Dockerhub, which includes the Python environment, dependencies, and Yosys.
+
+# Pull the docker image
+docker run -it --rm openlec/base:latest bash 
+
+# Inside the container, clone and run
+git clone https://github.com/oscc-project/OpenLEC.git && cd OpenLEC
+pip install -e .
+
+# If output shows "OpenLEC initialized", setup is successfully compiled
+openlec --help
+
+Method 2: Install dependencies and compile (Local)
+Requires Python 3.10+ and Yosys installed on your host system.
+
+# Install Yosys (Ubuntu/Debian)
+sudo apt-get update && sudo apt-get install -y yosys
+
+# download OpenLEC repo
+git clone https://github.com/oscc-project/OpenLEC.git && cd OpenLEC
+
+# create virtual environment
+python3 -m venv .venv && source .venv/bin/activate
+
+# install OpenLEC
+pip install -r requirements.txt
+pip install -e .
+
+# verify installation
+openlec --help
+
+🚀 Running OpenLEC
+Here are two methods to run the verification flow.
+
+Method 1: Run the Demo
+We provide a sample counter design with UPF power intent to demonstrate the agentic loop.
+
+python examples/run_demo.py
+Expected output: A final PASS/FAIL style report with delay/power/area estimates, UPF conformity status, and accepted optimization steps.
+
+Method 2: Run via CLI on Custom Designs
+Refer to the examples/ directory for config structures. You can run OpenLEC directly from the command line.
+
+openlec <rtl_file> \
+  --upf <file.upf> \
+  --top <top_module> \
+  --iterations 5 \
+  --delay-budget 10.0 \
+  --power-budget 1000 \
+  -v
+
+🗺 Roadmap
+Full UPF command coverage (beyond structural subset, adding state machines and supply networks)
+Real timing/power estimator integration (OpenSTA + Liberty + activity/VCD parsing)
+Multi-file netlist partitioning + distributed equivalence checks
+Rich HTML/PDF reporting with waveform highlighting
+CI workflows for Python + Yosys + sample tapeout designs
+Integration with local open-source LLMs (Ollama) for automated failure diagnosis
+
+🤝 Contribution Guide
+Fork this OpenLEC repository, and after adding and committing code, please submit a Pull Request.
+Please note the Coding Style of OpenLEC (enforced via ruff and mypy).
+
+📚 Citation
+If you use OpenLEC in your research or tapeout flows, please cite our project:
+
+@software{openlec2026,
+  title={OpenLEC: An Open-source Agentic AI Infrastructure for Low-Power LEC and UPF Verification},
+  author={OpenLEC Contributors},
+  year={2026},
+  publisher={GitHub},
+  url={https://github.com/oscc-project/OpenLEC}
+}
+
+💬 Discussion
+Create an Issue in the repo.
+Join our Discord/WeChat community for EDA research discussions.
+
+📜 License
+MIT License
+
+🙏 Acknowledgement
+In the development of OpenLEC, we heavily rely on the open-source EDA and Python communities. We encourage other open-source projects to reuse our code within the scope of the MIT license.
+
