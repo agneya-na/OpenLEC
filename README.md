@@ -2,7 +2,7 @@
   <h1 align="center">OpenLEC</h1>
   <p align="center">
     <b>Open-source Agentic AI Infrastructure for Low-Power LEC and UPF Verification</b><br>
-    <i>An open-source, Python-native alternative for Conformal LEC — featuring UPF (IEEE 1801) verification, SAT-based equivalence checking, and multi-agent optimization.</i>
+    <i>An open-source, Python-native alternative for Conformal LEC - featuring UPF (IEEE 1801) verification, SAT-based equivalence checking, and multi-agent optimization.</i>
   </p>
 </p>
 
