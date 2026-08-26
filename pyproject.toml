@@ -1,18 +1,26 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "conformAI"
+name = "openlec"
 version = "0.1.0"
-description = "Agentic Python architecture for conformAI flow"
+description = "Open-source Agentic AI Infrastructure for Low-Power LEC and UPF Verification"
 readme = "README.md"
-requires-python = ">=3.11"
-license = {text = "Apache-2.0"}
-authors = [{name = "conformAI contributors"}]
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "OpenLEC Contributors"}
+]
 dependencies = [
-  "PyYAML>=6.0",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+    "click>=8.1"
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
+[project.scripts]
+openlec = "openlec.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["openlec*"]
