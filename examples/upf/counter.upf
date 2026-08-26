@@ -1,0 +1,18 @@
+# examples/upf/counter.upf
+create_power_domain PD_TOP -include_scope
+create_power_domain PD_CORE -elements {u_core}
+
+create_supply_net VDD
+create_supply_net VSS
+
+set_isolation iso_core \
+    -domain PD_CORE \
+    -clamp_value 0 \
+    -applies_to outputs \
+    -isolation_signal iso_en \
+    -isolation_sense high
+
+set_retention ret_core \
+    -domain PD_CORE \
+    -save_signal save_en \
+    -restore_signal restore_en

@@ -1,0 +1,11 @@
+openlec:
+  yosys_path: "yosys"
+  timeout_seconds: 3600
+  sat_effort: "high"
+  
+agents:
+  equivalence:
+    enable_induction: true
+    enable_simple: true
+  power_intent:
+    strict_isolation_check: true
