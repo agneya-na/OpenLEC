@@ -63,51 +63,48 @@ To fast develop high-quality, AI-integrated EDA verification flows, we need a fl
 
 ```text
 OpenLEC/
- ├── README.md
- ├── LICENSE
- ├── pyproject.toml
- ├── requirements.txt
- ├── Makefile
- ├── Dockerfile
- │
- ├── openlec/                       # Python Core & Infrastructure
- │   ├── __init__.py
- │   ├── cli.py                     # User entrypoint
- │   ├── config.py
- │   │
- │   ├── agents/                    # Agentic AI Layer
- │   │   ├── orchestrator.py
- │   │   ├── parsing_agent.py
- │   │   ├── equivalence_agent.py
- │   │   ├── power_intent_agent.py
- │   │   ├── timing_agent.py
- │   │   ├── power_agent.py
- │   │   ├── optimization_agent.py
- │   │   └── reporting_agent.py
- │   │
- │   ├── engine/                    # Verification Engine
- │   │   ├── yosys_runner.py        # Interface to Yosys
- │   │   ├── lec_engine.py          # SAT-based equivalence
- │   │   ├── upf_parser.py          # IEEE 1801 UPF parsing
- │   │   ├── upf_checker.py         # Power-aware structural checks
- │   │   ├── timing_estimator.py
- │   │   ├── power_estimator.py
- │   │   └── optimizer.py
- │   │
- │   └── models/                    # Shared Typed Data Models
- │       ├── metrics.py
- │       ├── lec_result.py
- │       ├── upf_models.py
- │       └── optimization_step.py
- │
- ├── examples/                      # Sample Designs & UPF
- │   ├── designs/
- │   ├── upf/
- │   └── run_demo.py
- │
- ├── tests/                         # Pytest Suite
- ├── config/                        # YAML Configurations
- └── docs/                          # Documentation
+├── README.md
+├── LICENSE
+├── pyproject.toml
+├── requirements.txt
+├── openlec/
+│   ├── __init__.py
+│   ├── cli.py
+│   ├── config.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── metrics.py
+│   │   ├── lec_result.py
+│   │   ├── upf_models.py
+│   │   └── optimization_step.py
+│   ├── engine/
+│   │   ├── __init__.py
+│   │   ├── yosys_runner.py
+│   │   ├── lec_engine.py
+│   │   ├── upf_parser.py
+│   │   ├── upf_checker.py
+│   │   ├── timing_estimator.py
+│   │   ├── power_estimator.py
+│   │   └── optimizer.py
+│   └── agents/
+│       ├── __init__.py
+│       ├── orchestrator.py
+│       ├── parsing_agent.py
+│       ├── equivalence_agent.py
+│       ├── power_intent_agent.py
+│       ├── timing_agent.py
+│       ├── power_agent.py
+│       ├── optimization_agent.py
+│       └── reporting_agent.py
+├── examples/
+│   ├── designs/
+│   ├── upf/
+│   └── run_demo.py
+└── tests/
+    ├── test_cli.py
+    ├── test_agents.py
+    ├── test_lec_engine.py
+    └── test_upf_parser.py
 
 📖 User Guide
 Before running verification flows with OpenLEC, you need to obtain the execution environment. We provide Docker images for quick setup, or you can build from source.
