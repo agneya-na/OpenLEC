@@ -1,37 +1,52 @@
 import re
-from ..models import UPFIntent, PowerDomain, SupplyNet, IsolationRule
-import logging
-
-logger = logging.getLogger(__name__)
+from pathlib import Path
+from ..models.upf_models import UPFIntent, PowerDomain, IsolationStrategy, RetentionStrategy
 
 class UPFParser:
-    """Structural parser for IEEE 1801 UPF subsets."""
-    
-    def parse_file(self, upf_path: str) -> UPFIntent:
-        with open(upf_path, 'r') as f:
-            content = f.read()
-        return self.parse_string(content)
-
-    def parse_string(self, content: str) -> UPFIntent:
-        intent = UPFIntent(raw_content=content)
+    """
+    Parses IEEE 1801 UPF files. 
+    Equivalent to Conformal's `READ POWER INTENT` command.
+    """
+    def __init__(self, upf_file: str):
+        self.upf_file = Path(upf_file)
+        self.intent = UPFIntent(design_top="")
         
-        # Parse Power Domains
-        for match in re.finditer(r'create_power_domain\s+(\w+)(?:\s+-elements\s+\{([^}]+)\})?', content):
+    def parse(self) -> UPFIntent:
+        content = self.upf_file.read_text()
+        content = re.sub(r'#.*', '', content) # Remove comments
+        
+        self._parse_set_design_top(content)
+        self._parse_power_domains(content)
+        self._parse_isolation(content)
+        self._parse_retention(content)
+        return self.intent
+
+    def _parse_set_design_top(self, content: str):
+        match = re.search(r'set_design_top\s+([a-zA-Z0-9_\/]+)', content)
+        if match:
+            self.intent.design_top = match.group(1).split('/')[-1]
+
+    def _parse_power_domains(self, content: str):
+        # Regex for: create_power_domain PD1 -elements {inst1 inst2}
+        pattern = r'create_power_domain\s+([a-zA-Z0-9_]+)\s*(?:-elements\s+\{([^}]+)\})?\s*(?:-include_scope)?'
+        for match in re.finditer(pattern, content):
             name = match.group(1)
             elements = match.group(2).split() if match.group(2) else []
-            intent.domains.append(PowerDomain(name=name, elements=elements))
-            
-        # Parse Supply Nets
-        for match in re.finditer(r'create_supply_net\s+(\w+)(?:\s+-domain\s+(\w+))?', content):
-            intent.supply_nets.append(SupplyNet(name=match.group(1), domain=match.group(2)))
-            
-        # Parse Isolation Rules
-        for match in re.finditer(r'set_isolation\s+(\w+)\s+-domain\s+(\w+).*?-clamp_value\s+(\w+)', content, re.DOTALL):
-            intent.isolation_rules.append(IsolationRule(
-                name=match.group(1),
-                domain=match.group(2),
-                clamp_value=match.group(3)
+            self.intent.power_domains.append(PowerDomain(name=name, elements=elements))
+
+    def _parse_isolation(self, content: str):
+        # Regex for: set_isolation ISO1 -domain PD1 -applies_to outputs -clamp_value 0 -isolation_signal iso_en
+        pattern = r'set_isolation\s+([a-zA-Z0-9_]+)\s+-domain\s+([a-zA-Z0-9_]+)\s+-applies_to\s+([a-zA-Z]+)\s+-clamp_value\s+([01])\s+(?:-isolation_signal\s+([a-zA-Z0-9_]+))?'
+        for match in re.finditer(pattern, content):
+            self.intent.isolation_strategies.append(IsolationStrategy(
+                name=match.group(1), domain=match.group(2), applies_to=match.group(3),
+                clamp_value=match.group(4), isolation_signal=match.group(5)
             ))
-            
-        logger.info(f"Parsed {len(intent.domains)} domains, {len(intent.supply_nets)} nets, {len(intent.isolation_rules)} isolation rules.")
-        return intent
+
+    def _parse_retention(self, content: str):
+        pattern = r'set_retention\s+([a-zA-Z0-9_]+)\s+-domain\s+([a-zA-Z0-9_]+).*?(?:-save_signal\s+\{([a-zA-Z0-9_]+)\})?.*?(?:-restore_signal\s+\{([a-zA-Z0-9_]+)\})?'
+        for match in re.finditer(pattern, content, re.DOTALL):
+            self.intent.retention_strategies.append(RetentionStrategy(
+                name=match.group(1), domain=match.group(2),
+                save_signal=match.group(3), restore_signal=match.group(4)
+            ))
