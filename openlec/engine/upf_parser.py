@@ -1,77 +1,119 @@
+"""IEEE 1801 UPF parser (open-source counterpart of READ POWER INTENT).
+
+Order-independent option parsing: UPF options may appear in any order and
+may span lines via backslash continuation.
 """
-UPF Parser Engine.
-Equivalent to Conformal's `READ POWER INTENT` command.
-Parses IEEE 1801 UPF files into structured Pydantic models.
-"""
+from __future__ import annotations
+
 import re
-import logging
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
+
 from openlec.models.upf_models import (
-    UPFIntent, PowerDomain, SupplyNet, IsolationStrategy, RetentionStrategy, AppliesTo, IsolationSense
+    IsolationStrategy, PowerDomain, RetentionStrategy, SupplyNet, UPFIntent,
 )
 
-logger = logging.getLogger(__name__)
+logger = __import__("logging").getLogger(__name__)
+
+_COMMANDS = (
+    "set_design_top", "create_power_domain", "create_supply_net",
+    "set_isolation", "set_retention",
+)
+_COMMAND_RE = re.compile(r"^\s*(" + "|".join(_COMMANDS) + r")\b", re.MULTILINE)
+
+
+def _option(chunk: str, name: str) -> str | None:
+    m = re.search(rf"-{name}\s+(\{{[^}}]*\}}|\S+)", chunk)
+    if not m:
+        return None
+    value = m.group(1)
+    return value[1:-1] if value.startswith("{") and value.endswith("}") else value
+
+
+def _flag(chunk: str, name: str) -> bool:
+    return re.search(rf"-{name}\b", chunk) is not None
+
 
 class UPFParser:
-    def __init__(self, upf_file: str | Path):
+    def __init__(self, upf_file: str | Path) -> None:
         self.upf_file = Path(upf_file)
-        if not self.upf_file.exists():
-            raise FileNotFoundError(f"UPF file not found: {self.upf_file}")
 
     def parse(self) -> UPFIntent:
-        content = self.upf_file.read_text()
-        # Remove single-line comments
-        content = re.sub(r'#.*', '', content)
-        
+        return self.parse_text(self.upf_file.read_text())
+
+    def parse_file(self, upf_file: str | Path) -> UPFIntent:
+        """Backward-compatible alias."""
+        self.upf_file = Path(upf_file)
+        return self.parse()
+
+    def parse_text(self, content: str) -> UPFIntent:
+        cleaned = re.sub(r"#[^\n]*", "", content)
+        cleaned = re.sub(r"\\\s*\n", " ", cleaned)
         intent = UPFIntent(raw_content=content)
-        
-        # 1. Parse Design Top
-        top_match = re.search(r'set_design_top\s+([a-zA-Z0-9_\/]+)', content)
-        if top_match:
-            intent.design_top = top_match.group(1)
-            
-        # 2. Parse Power Domains
-        # Regex handles: create_power_domain PD1 -elements {inst1 inst2} -include_scope
-        pd_pattern = r'create_power_domain\s+([a-zA-Z0-9_]+)\s*(?:-elements\s+\{([^}]*)\})?\s*(?:-include_scope)?'
-        for match in re.finditer(pd_pattern, content):
-            name = match.group(1)
-            elements_str = match.group(2)
-            elements = elements_str.split() if elements_str else []
-            include_scope = "-include_scope" in match.group(0)
-            intent.power_domains.append(PowerDomain(name=name, elements=elements, include_scope=include_scope))
-            
-        # 3. Parse Supply Nets
-        sn_pattern = r'create_supply_net\s+([a-zA-Z0-9_]+)(?:\s+-domain\s+([a-zA-Z0-9_]+))?'
-        for match in re.finditer(sn_pattern, content):
-            intent.supply_nets.append(SupplyNet(name=match.group(1), domain=match.group(2)))
-            
-        # 4. Parse Isolation Strategies
-        # set_isolation ISO1 -domain PD1 -applies_to outputs -clamp_value 0 -isolation_signal iso_en -isolation_sense high
-        iso_pattern = r'set_isolation\s+([a-zA-Z0-9_]+)\s+-domain\s+([a-zA-Z0-9_]+)\s+(?:-applies_to\s+([a-zA-Z]+))?\s+(?:-clamp_value\s+([01xXzZ]))?\s+(?:-isolation_signal\s+([a-zA-Z0-9_]+))?\s+(?:-isolation_sense\s+([a-zA-Z]+))?\s+(?:-location\s+([a-zA-Z]+))?'
-        for match in re.finditer(iso_pattern, content):
-            intent.isolation_strategies.append(IsolationStrategy(
-                name=match.group(1),
-                domain=match.group(2),
-                applies_to=AppliesTo(match.group(3) or "outputs"),
-                clamp_value=match.group(4) or "0",
-                isolation_signal=match.group(5),
-                isolation_sense=IsolationSense(match.group(6) or "high"),
-                location=match.group(7) or "parent"
-            ))
-            
-        # 5. Parse Retention Strategies
-        # set_retention RET1 -domain PD1 -retention_power_net VDD -save_signal save_en -restore_signal restore_en
-        ret_pattern = r'set_retention\s+([a-zA-Z0-9_]+)\s+-domain\s+([a-zA-Z0-9_]+)(?:\s+-retention_power_net\s+([a-zA-Z0-9_]+))?(?:\s+-retention_ground_net\s+([a-zA-Z0-9_]+))?(?:\s+-save_signal\s+\{?([a-zA-Z0-9_]+)\}?)?(?:\s+-restore_signal\s+\{?([a-zA-Z0-9_]+)\}?)?'
-        for match in re.finditer(ret_pattern, content):
-            intent.retention_strategies.append(RetentionStrategy(
-                name=match.group(1),
-                domain=match.group(2),
-                retention_power_net=match.group(3),
-                retention_ground_net=match.group(4),
-                save_signal=match.group(5),
-                restore_signal=match.group(6)
-            ))
-            
-        logger.info(f"Parsed UPF: {len(intent.power_domains)} Domains, {len(intent.isolation_strategies)} Isolation Rules, {len(intent.retention_strategies)} Retention Rules.")
+        for kind, chunk in self._split_commands(cleaned):
+            getattr(self, f"_parse_{kind}")(chunk, intent)
+        logger.info(
+            "Parsed UPF: %d domain(s), %d isolation, %d retention",
+            len(intent.power_domains), len(intent.isolation_strategies),
+            len(intent.retention_strategies),
+        )
         return intent
+
+    @staticmethod
+    def _split_commands(content: str) -> List[Tuple[str, str]]:
+        matches = list(_COMMAND_RE.finditer(content))
+        return [
+            (m.group(1), content[m.start(1):matches[i + 1].start() if i + 1 < len(matches) else len(content)].strip())
+            for i, m in enumerate(matches)
+        ]
+
+    @staticmethod
+    def _parse_set_design_top(chunk: str, intent: UPFIntent) -> None:
+        m = re.match(r"set_design_top\s+([^\s-]\S*)", chunk)
+        if m:
+            intent.design_top = m.group(1).strip("/")
+
+    @staticmethod
+    def _parse_create_power_domain(chunk: str, intent: UPFIntent) -> None:
+        m = re.match(r"create_power_domain\s+([A-Za-z_][\w]*)", chunk)
+        if not m:
+            return
+        elements = (_option(chunk, "elements") or "").split()
+        intent.power_domains.append(PowerDomain(
+            name=m.group(1), elements=elements, include_scope=_flag(chunk, "include_scope"),
+        ))
+
+    @staticmethod
+    def _parse_create_supply_net(chunk: str, intent: UPFIntent) -> None:
+        m = re.match(r"create_supply_net\s+([A-Za-z_][\w]*)", chunk)
+        if m:
+            intent.supply_nets.append(SupplyNet(name=m.group(1), domain=_option(chunk, "domain")))
+
+    @staticmethod
+    def _parse_set_isolation(chunk: str, intent: UPFIntent) -> None:
+        m = re.match(r"set_isolation\s+([A-Za-z_][\w]*)", chunk)
+        if not m or not _option(chunk, "domain"):
+            return
+        intent.isolation_strategies.append(IsolationStrategy(
+            name=m.group(1),
+            domain=_option(chunk, "domain") or "",
+            applies_to=_option(chunk, "applies_to") or "outputs",
+            clamp_value=_option(chunk, "clamp_value") or "0",
+            isolation_signal=_option(chunk, "isolation_signal"),
+            isolation_sense=_option(chunk, "isolation_sense") or "high",
+            location=_option(chunk, "location") or "parent",
+        ))
+
+    @staticmethod
+    def _parse_set_retention(chunk: str, intent: UPFIntent) -> None:
+        m = re.match(r"set_retention\s+([A-Za-z_][\w]*)", chunk)
+        if not m or not _option(chunk, "domain"):
+            return
+        intent.retention_strategies.append(RetentionStrategy(
+            name=m.group(1),
+            domain=_option(chunk, "domain") or "",
+            retention_power_net=_option(chunk, "retention_power_net"),
+            retention_ground_net=_option(chunk, "retention_ground_net"),
+            save_signal=_option(chunk, "save_signal"),
+            restore_signal=_option(chunk, "restore_signal"),
+        ))
