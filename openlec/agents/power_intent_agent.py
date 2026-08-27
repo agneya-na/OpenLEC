@@ -1,29 +1,27 @@
-from . import BaseAgent
-from ..engine.upf_parser import UPFParser
-from ..engine.upf_checker import UPFChecker
-from ..models import Verdict
-from typing import Dict, Any
+"""UPF conformity gate (Conformal: CHECK LOWPOWER CELLS / COMPARE POWER CONSISTENCY)."""
+from __future__ import annotations
+
+from openlec.agents import BaseAgent
+from openlec.engine.upf_checker import UPFChecker
+from openlec.models.schemas import VerificationContext
+
 
 class PowerIntentAgent(BaseAgent):
-    def __init__(self):
-        self.parser = UPFParser()
-        self.checker = UPFChecker()
+    name = "power_intent"
 
-    def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        upf_file = context.get("upf_file")
-        if not upf_file:
-            context["halt"] = True
-            context["reason"] = "Missing UPF file."
-            return context
-
-        intent = self.parser.parse_file(upf_file)
-        context["upf_intent"] = intent
-        
-        verdict = self.checker.check_isolation_clamps(intent)
-        context["upf_verdict"] = verdict
-        
-        if verdict == Verdict.FAIL:
-            context["halt"] = True
-            context["reason"] = "UPF Structural Check Failed: Missing isolation rules."
-            
-        return context
+    def execute(self, ctx: VerificationContext) -> VerificationContext:
+        if ctx.halted or ctx.upf_intent is None:
+            return ctx
+        checker = UPFChecker(
+            ctx.upf_intent,
+            netlist_ast={"isolated_domains": sorted(ctx.upf_intent.isolated_domains())},
+        )
+        ctx.upf_checks = checker.run_all_checks()
+        for family, result in ctx.upf_checks.items():
+            if result.passed:
+                self.log(ctx, f"UPF {family}: PASS")
+            elif family == "isolation":
+                ctx.halt(f"UPF isolation violations: {result.violations}")
+            else:
+                self.log(ctx, f"UPF {family} warnings: {result.violations}")
+        return ctx
