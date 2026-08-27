@@ -1,23 +1,22 @@
+"""Agentic layer: base class only (submodules imported explicitly to avoid cycles)."""
+from __future__ import annotations
+
+import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any
-from ..models import Verdict
+
+from openlec.models.schemas import VerificationContext
+
+logger = logging.getLogger(__name__)
+
 
 class BaseAgent(ABC):
+    name: str = "base"
+
     @abstractmethod
-    def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        pass
+    def execute(self, ctx: VerificationContext) -> VerificationContext:
+        """Mutate/extend the shared context and return it."""
 
-class Orchestrator:
-    def __init__(self, agents: list[BaseAgent]):
-        self.agents = agents
-
-    def run(self, initial_context: Dict[str, Any]) -> Dict[str, Any]:
-        context = initial_context
-        for agent in self.agents:
-            agent_name = agent.__class__.__name__
-            print(f"🤖 Running Agent: {agent_name}")
-            context = agent.execute(context)
-            if context.get("halt"):
-                print(f"🛑 Orchestrator halted by {agent_name}: {context.get('reason')}")
-                break
-        return context
+    def log(self, ctx: VerificationContext, message: str) -> None:
+        logger.info("[%s] %s", self.name, message)
+        if ctx.verbose:
+            print(f"[{self.name}] {message}")
