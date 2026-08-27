@@ -1,0 +1,21 @@
+# mac_unit power intent: always-on top + switchable MAC domain
+set_design_top mac_unit
+
+create_power_domain PD_TOP -include_scope
+create_power_domain PD_MAC -elements {mac_core}
+
+create_supply_net VDD -domain PD_TOP
+create_supply_net VSS -domain PD_TOP
+
+set_isolation iso_mac \
+    -domain PD_MAC \
+    -applies_to outputs \
+    -clamp_value 0 \
+    -isolation_signal mac_iso_en \
+    -isolation_sense high
+
+set_retention ret_acc \
+    -domain PD_MAC \
+    -retention_power_net VDD \
+    -save_signal mac_save_en \
+    -restore_signal mac_restore_en
