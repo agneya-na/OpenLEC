@@ -1,6 +1,5 @@
-import subprocess
 import logging
-from pathlib import Path
+from .yosys_runner import YosysRunner
 from ..models.lec_result import LECResult, LECVerdict
 
 logger = logging.getLogger(__name__)
@@ -8,56 +7,95 @@ logger = logging.getLogger(__name__)
 class LECEngine:
     """
     SAT-based Logic Equivalence Checking using Yosys.
-    Replaces Conformal's `COMPARE` and `ANALYZE SETUP` commands.
+    Maps directly to Conformal's `READ DESIGN`, `ANALYZE SETUP`, `COMPARE`, and `ANALYZE ABORT`.
     """
-    def __init__(self, yosys_exec: str = "yosys"):
-        self.yosys_exec = yosys_exec
+    
+    def __init__(self, runner: YosysRunner = None):
+        self.runner = runner or YosysRunner()
 
     def run_equivalence_check(self, golden_rtl: str, revised_rtl: str, top_module: str) -> LECResult:
         """
-        Executes Yosys equiv_* flow to prove equivalence.
+        Executes the complete LEC flow.
         """
+        # Yosys script mapping Conformal's setup and compare phases
         yosys_script = f"""
-        # 1. Read Designs (Conformal: READ DESIGN -Golden / -Revised)
+        # ---------------------------------------------------------
+        # 1. READ DESIGN (Conformal: READ DESIGN -golden/-revised)
+        # ---------------------------------------------------------
         read_verilog {golden_rtl}
         rename {top_module} golden
         read_verilog {revised_rtl}
         rename {top_module} revised
-
-        # 2. Hierarchy & Flatten (Conformal: FLATTEN / SET FLATTEN MODEL)
-        hierarchy -top golden
-        proc; opt; memory; opt
-
-        # 3. Create Equivalence Miter (Conformal: MAP KEY POINTS)
-        equiv_make golden revised equiv
-
-        # 4. SAT Solving (Conformal: COMPARE)
-        equiv_simple equiv
-        equiv_sat -prove equiv
         
-        # 5. Extract Status (Conformal: REPORT COMPARE DATA)
+        # ---------------------------------------------------------
+        # 2. ANALYZE SETUP (Conformal: ANALYZE SETUP / FLATTEN)
+        # Hierarchy resolution, process/memory/FSM extraction
+        # ---------------------------------------------------------
+        hierarchy -top golden
+        hierarchy -top revised
+        proc; opt; memory; opt; fsm; opt -full
+        
+        # ---------------------------------------------------------
+        # 3. COMPARE (Conformal: ADD COMPARED POINTS -all / COMPARE)
+        # SAT-based miter creation and inductive proving
+        # ---------------------------------------------------------
+        equiv_make golden revised equiv
+        equiv_induct equiv
+        
+        # ---------------------------------------------------------
+        # 4. ANALYZE ABORT (Conformal: ANALYZE ABORT / REPORT COMPARE DATA)
+        # Extracting status of mapped, unmapped, and aborted points
+        # ---------------------------------------------------------
         equiv_status equiv
         """
         
-        script_path = Path("yosys_lec_script.ys")
-        script_path.write_text(yosys_script)
-        
         try:
-            result = subprocess.run(
-                [self.yosys_exec, "-s", str(script_path)],
-                capture_output=True, text=True, timeout=300
-            )
-            return self._parse_yosys_output(result.stdout)
-        except subprocess.TimeoutExpired:
-            # Maps to Conformal's ABORT status
-            return LECResult(verdict=LECVerdict.ABORT, message="SAT solver timed out (Abort). Run ANALYZE ABORT.")
+            stdout = self.runner.run_script(yosys_script)
+            return self._parse_yosys_output(stdout)
         except Exception as e:
-            return LECResult(verdict=LECVerdict.ABORT, message=f"Execution failed: {str(e)}")
+            logger.error(f"LEC Flow crashed: {str(e)}")
+            return LECResult(
+                verdict=LECVerdict.ABORT,
+                message=f"LEC Flow crashed during execution: {str(e)}",
+                unmapped_points=0,
+                abort_points=1
+            )
 
     def _parse_yosys_output(self, stdout: str) -> LECResult:
-        if "Equivalence successfully proven" in stdout or "Proved" in stdout:
-            return LECResult(verdict=LECVerdict.EQUIVALENT, message="Designs are functionally equivalent.")
-        elif "UNPROVEN" in stdout or "Not equivalent" in stdout:
-            return LECResult(verdict=LECVerdict.NONEQUIVALENT, message="Found nonequivalent points.")
+        """
+        Parses Yosys equiv_status output to map to Conformal's EQ/NEQ/Abort statuses.
+        """
+        unmapped = 0
+        aborts = 0
+        proved = False
+        
+        for line in stdout.splitlines():
+            line_lower = line.lower()
+            # Mapping Yosys outputs to Conformal's Compare Results table
+            if "unmapped" in line_lower or "not mapped" in line_lower:
+                unmapped += 1
+            if "abort" in line_lower or "sat" in line_lower or "failed" in line_lower:
+                aborts += 1
+            if "proved" in line_lower or "equivalent" in line_lower:
+                proved = True
+                
+        # Decision Logic based on Conformal's priority rules
+        if aborts > 0:
+            verdict = LECVerdict.ABORT
+            msg = f"SAT solver aborted/inconclusive. Aborts: {aborts}, Unmapped: {unmapped}"
+        elif unmapped > 0:
+            verdict = LECVerdict.ABORT
+            msg = f"Unmapped points detected. Unmapped: {unmapped}"
+        elif proved:
+            verdict = LECVerdict.EQUIVALENT
+            msg = "Designs are functionally equivalent (Proved by SAT)."
         else:
-            return LECResult(verdict=LECVerdict.ABORT, message="SAT solver aborted or inconclusive.")
+            verdict = LECVerdict.NONEQUIVALENT
+            msg = "Designs are NOT equivalent (Counterexample found)."
+            
+        return LECResult(
+            verdict=verdict,
+            message=msg,
+            unmapped_points=unmapped,
+            abort_points=aborts
+        )
