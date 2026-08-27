@@ -1,41 +1,28 @@
-import click
+import argparse
 import logging
-from rich.console import Console
-from .agents import Orchestrator
-from .agents.power_intent_agent import PowerIntentAgent
-from .agents.equivalence_agent import EquivalenceAgent
+import sys
+from .agents.orchestrator import AgenticOrchestrator
 
-console = Console()
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-
-@click.command()
-@click.argument('golden_rtl', type=click.Path(exists=True))
-@click.argument('revised_rtl', type=click.Path(exists=True))
-@click.option('--upf', type=click.Path(exists=True), help='IEEE 1801 UPF file')
-@click.option('--top', required=True, help='Top module name')
-def main(golden_rtl: str, revised_rtl: str, upf: str, top: str):
-    """OpenLEC: Agentic AI LEC & UPF Verification"""
-    console.print("[bold green]🚀 OpenLEC Verification Orchestrator[/bold green]")
+def main():
+    parser = argparse.ArgumentParser(description="OpenLEC: Agentic AI LEC & UPF Verification")
+    parser.add_argument("rtl_file", help="Path to the Golden RTL file")
+    parser.add_argument("--upf", required=True, help="Path to the IEEE 1801 UPF file")
+    parser.add_argument("--top", required=True, help="Top module name")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
     
-    context = {
-        "golden_rtl": golden_rtl,
-        "revised_rtl": revised_rtl,
-        "upf_file": upf,
-        "top_module": top
-    }
+    args = parser.parse_args()
     
-    agents = []
-    if upf:
-        agents.append(PowerIntentAgent())
-    agents.append(EquivalenceAgent())
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(level=log_level, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     
-    orchestrator = Orchestrator(agents)
-    final_context = orchestrator.run(context)
+    orchestrator = AgenticOrchestrator(
+        rtl_file=args.rtl_file,
+        upf_file=args.upf,
+        top_module=args.top
+    )
     
-    if final_context.get("halt") and final_context.get("verdict") != "PASS":
-        console.print(f"[bold red]❌ VERDICT: FAIL[/bold red] - {final_context.get('reason')}")
-    else:
-        console.print("[bold green]✅ VERDICT: PASS[/bold green] - Equivalence and UPF checks successful.")
+    success = orchestrator.run_verification_flow()
+    sys.exit(0 if success else 1)
 
 if __name__ == "__main__":
     main()
