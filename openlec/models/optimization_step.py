@@ -1,13 +1,19 @@
 # models/optimization_step.py
 from __future__ import annotations
-from dataclasses import dataclass, field
+
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+
 from .metrics import DesignMetrics
+
 
 class Verdict(str, Enum):
     ACCEPT = "accept"
     REJECT = "reject"
+
+
+# Canonical enum name used by agents/reporting/tests.
+StepVerdict = Verdict
 
 @dataclass(slots=True)
 class OptimizationStep:
@@ -16,4 +22,4 @@ class OptimizationStep:
     verdict: Verdict
     reject_reason: str = ""
     revised_netlist: str = ""
-    metrics: Optional[DesignMetrics] = None
+    metrics: DesignMetrics | None = None

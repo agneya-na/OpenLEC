@@ -2,9 +2,10 @@
 IEEE 1801 UPF Data Models.
 Maps to Conformal's internal Power Intent Database after `READ POWER INTENT`.
 """
-from pydantic import BaseModel, Field
-from typing import List, Optional
 from enum import Enum
+
+from pydantic import BaseModel, Field
+
 
 class AppliesTo(str, Enum):
     INPUTS = "inputs"
@@ -15,14 +16,19 @@ class IsolationSense(str, Enum):
     HIGH = "high"
     LOW = "low"
 
+class SupplyState(str, Enum):
+    ON = "on"
+    OFF = "off"
+    RETENTION = "retention"
+
 class PowerDomain(BaseModel):
     name: str
-    elements: List[str] = Field(default_factory=list)
+    elements: list[str] = Field(default_factory=list)
     include_scope: bool = False
 
 class SupplyNet(BaseModel):
     name: str
-    domain: Optional[str] = None
+    domain: str | None = None
     is_switched: bool = False
     voltage: float = 0.0
 
@@ -31,23 +37,39 @@ class IsolationStrategy(BaseModel):
     domain: str
     applies_to: AppliesTo = AppliesTo.OUTPUTS
     clamp_value: str = "0"
-    isolation_signal: Optional[str] = None
+    isolation_signal: str | None = None
     isolation_sense: IsolationSense = IsolationSense.HIGH
     location: str = "parent"  # 'parent' or 'self'
 
 class RetentionStrategy(BaseModel):
     name: str
     domain: str
-    retention_power_net: Optional[str] = None
-    retention_ground_net: Optional[str] = None
-    save_signal: Optional[str] = None
-    restore_signal: Optional[str] = None
+    retention_power_net: str | None = None
+    retention_ground_net: str | None = None
+    save_signal: str | None = None
+    restore_signal: str | None = None
 
 class UPFIntent(BaseModel):
     """Master UPF Intent Object"""
     design_top: str = ""
-    power_domains: List[PowerDomain] = Field(default_factory=list)
-    supply_nets: List[SupplyNet] = Field(default_factory=list)
-    isolation_strategies: List[IsolationStrategy] = Field(default_factory=list)
-    retention_strategies: List[RetentionStrategy] = Field(default_factory=list)
+    power_domains: list[PowerDomain] = Field(default_factory=list)
+    supply_nets: list[SupplyNet] = Field(default_factory=list)
+    isolation_strategies: list[IsolationStrategy] = Field(default_factory=list)
+    retention_strategies: list[RetentionStrategy] = Field(default_factory=list)
     raw_content: str = ""
+
+    def domain_names(self) -> list[str]:
+        return [pd.name for pd in self.power_domains]
+
+    def isolated_domains(self) -> set[str]:
+        return {iso.domain for iso in self.isolation_strategies}
+
+    def retained_domains(self) -> set[str]:
+        return {ret.domain for ret in self.retention_strategies}
+
+
+class UPFCheckResult(BaseModel):
+    rule_family: str = ""
+    passed: bool
+    violations: list[str] = Field(default_factory=list)
+    checked_rules: list[str] = Field(default_factory=list)

@@ -4,8 +4,8 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
 
 from openlec.agents.orchestrator import AgenticOrchestrator
 from openlec.agents.reporting_agent import ReportingAgent
@@ -29,8 +29,13 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    rtl_path = Path(args.rtl_file)
+    if not rtl_path.exists():
+        return 2
+    if args.upf and not Path(args.upf).exists():
+        return 2
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s %(name)s: %(message)s",

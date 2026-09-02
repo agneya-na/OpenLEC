@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openlec"
-version = "1.0.0"
+version = "0.1.0"
 description = "Production-Grade Agentic AI Infrastructure for Low-Power LEC and UPF Verification"
 readme = "README.md"
 requires-python = ">=3.10"

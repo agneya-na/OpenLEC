@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
 from openlec.models.schemas import VerificationContext
@@ -13,7 +13,7 @@ from openlec.models.schemas import VerificationContext
 class OpenLECConfig(BaseModel):
     rtl_file: str
     top_module: str
-    upf_file: Optional[str] = None
+    upf_file: str | None = None
     iterations: int = 3
     delay_budget_ns: float = 10.0
     power_budget_uw: float = 1000.0
@@ -32,7 +32,7 @@ class OpenLECConfig(BaseModel):
         )
 
 
-def load_config_file(path: Optional[Path]) -> Dict[str, Any]:
+def load_config_file(path: Path | None) -> dict[str, Any]:
     if path is None or not Path(path).exists():
         return {}
     data = yaml.safe_load(Path(path).read_text()) or {}
