@@ -2,9 +2,10 @@
 LEC Result Models.
 Maps to Conformal's `COMPARE` and `REPORT COMPARE DATA` outputs.
 """
-from pydantic import BaseModel, Field
-from typing import List, Optional
 from enum import Enum
+
+from pydantic import BaseModel
+
 
 class LECVerdict(str, Enum):
     EQUIVALENT = "Equivalent"       # Conformal: EQ
@@ -19,8 +20,3 @@ class LECResult(BaseModel):
     abort_points: int = 0
     nonequivalent_points: int = 0
     yosys_log: str = ""
-    
-class UPFCheckResult(BaseModel):
-    passed: bool
-    violations: List[str] = Field(default_factory=list)
-    checked_rules: List[str] = Field(default_factory=list)

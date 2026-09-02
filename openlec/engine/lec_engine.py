@@ -1,6 +1,7 @@
 import logging
-from .yosys_runner import YosysRunner
+
 from ..models.lec_result import LECResult, LECVerdict
+from .yosys_runner import YosysRunner
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +11,7 @@ class LECEngine:
     Maps directly to Conformal's `READ DESIGN`, `ANALYZE SETUP`, `COMPARE`, and `ANALYZE ABORT`.
     """
     
-    def __init__(self, runner: YosysRunner = None):
+    def __init__(self, runner: YosysRunner | None = None):
         self.runner = runner or YosysRunner()
 
     def run_equivalence_check(self, golden_rtl: str, revised_rtl: str, top_module: str) -> LECResult:
@@ -52,11 +53,11 @@ class LECEngine:
         try:
             stdout = self.runner.run_script(yosys_script)
             return self._parse_yosys_output(stdout)
-        except Exception as e:
-            logger.error(f"LEC Flow crashed: {str(e)}")
+        except RuntimeError as e:
+            logger.error(f"LEC Flow crashed: {e!s}")
             return LECResult(
                 verdict=LECVerdict.ABORT,
-                message=f"LEC Flow crashed during execution: {str(e)}",
+                message=f"LEC Flow crashed during execution: {e!s}",
                 unmapped_points=0,
                 abort_points=1
             )

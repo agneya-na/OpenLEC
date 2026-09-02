@@ -7,10 +7,15 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import List, Tuple
 
 from openlec.models.upf_models import (
-    IsolationStrategy, PowerDomain, RetentionStrategy, SupplyNet, UPFIntent,
+    AppliesTo,
+    IsolationSense,
+    IsolationStrategy,
+    PowerDomain,
+    RetentionStrategy,
+    SupplyNet,
+    UPFIntent,
 )
 
 logger = __import__("logging").getLogger(__name__)
@@ -60,7 +65,7 @@ class UPFParser:
         return intent
 
     @staticmethod
-    def _split_commands(content: str) -> List[Tuple[str, str]]:
+    def _split_commands(content: str) -> list[tuple[str, str]]:
         matches = list(_COMMAND_RE.finditer(content))
         return [
             (m.group(1), content[m.start(1):matches[i + 1].start() if i + 1 < len(matches) else len(content)].strip())
@@ -94,13 +99,15 @@ class UPFParser:
         m = re.match(r"set_isolation\s+([A-Za-z_][\w]*)", chunk)
         if not m or not _option(chunk, "domain"):
             return
+        applies_to = _option(chunk, "applies_to") or "outputs"
+        sense = _option(chunk, "isolation_sense") or "high"
         intent.isolation_strategies.append(IsolationStrategy(
             name=m.group(1),
             domain=_option(chunk, "domain") or "",
-            applies_to=_option(chunk, "applies_to") or "outputs",
+            applies_to=AppliesTo(applies_to),
             clamp_value=_option(chunk, "clamp_value") or "0",
             isolation_signal=_option(chunk, "isolation_signal"),
-            isolation_sense=_option(chunk, "isolation_sense") or "high",
+            isolation_sense=IsolationSense(sense),
             location=_option(chunk, "location") or "parent",
         ))
 

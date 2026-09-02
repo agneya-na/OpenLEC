@@ -8,7 +8,7 @@ install:
 	$(PY) -m pip install -e .
 
 install-dev:
-	$(PY) -m pip install -r requirements-dev.txt
+	$(PY) -m pip install -r requirements.txt
 	$(PY) -m pip install -e .
 
 test:

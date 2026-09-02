@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
 from openlec.agents import BaseAgent
 from openlec.agents.equivalence_agent import EquivalenceAgent
@@ -19,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class AgenticOrchestrator:
-    def __init__(self, ctx: VerificationContext, runner: Optional[YosysRunner] = None) -> None:
+    def __init__(self, ctx: VerificationContext, runner: YosysRunner | None = None) -> None:
         self.ctx = ctx
         self.runner = runner or YosysRunner()
-        self.agents: List[BaseAgent] = [
+        self.agents: list[BaseAgent] = [
             ParsingAgent(),
             PowerIntentAgent(),
             EquivalenceAgent(self.runner),

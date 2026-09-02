@@ -1,10 +1,6 @@
 """Yosys-free agent tests. Yosys-dependent engines are replaced with stubs."""
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 import openlec.agents.orchestrator as orch_mod
 from openlec.agents import BaseAgent
 from openlec.agents.optimization_agent import OptimizationAgent
