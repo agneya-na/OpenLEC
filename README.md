@@ -174,9 +174,28 @@ openlec <rtl_file> \
 
 ## 🤝 Contribution Guide
 
-Fork the repository, create your branch, commit changes, and open a Pull Request.
+OpenLEC is maintained by the project owner and sole maintainer: `agneya-na`.
 
-Coding style is enforced via `ruff` and `mypy`.
+If you would like to propose a change, please open an issue first describing the intended change and link any relevant designs or testcases. The maintainer must approve any non-trivial changes before a pull request is created.
+
+Preferred workflow for small fixes:
+1. Fork the repository.
+2. Create a branch named `fix/your-short-description`.
+3. Run tests and linters (see coding style below).
+4. Open a Pull Request against `main` with a clear description and any test results.
+
+For larger changes or new features, open an issue first and wait for the maintainer's guidance.
+
+Coding style and quality checks:
+- Formatting and linting: `ruff` (project style).
+- Type checks: `mypy`.
+- Tests: pytest (see `tests/`).
+
+---
+
+## 📖 Future contributions
+
+This repository is primarily maintained by `agneya-na`. Contributions are welcome as described above but will be reviewed and merged at the maintainer's discretion. If you require that your contribution be merged under a different authoring policy, mention it in the issue and discuss it with the maintainer prior to submission.
 
 ---
 
