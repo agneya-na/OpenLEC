@@ -32,9 +32,8 @@ class LECEngine:
         # 2. ANALYZE SETUP (Conformal: ANALYZE SETUP / FLATTEN)
         # Hierarchy resolution, process/memory/FSM extraction
         # ---------------------------------------------------------
-        hierarchy -top golden
-        hierarchy -top revised
-        proc; opt; memory; opt; fsm; opt -full
+        hierarchy -check
+        proc; async2sync; opt; memory; opt; fsm; opt -full
         
         # ---------------------------------------------------------
         # 3. COMPARE (Conformal: ADD COMPARED POINTS -all / COMPARE)
