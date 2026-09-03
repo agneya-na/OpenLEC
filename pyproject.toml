@@ -9,7 +9,7 @@ description = "Production-Grade Agentic AI Infrastructure for Low-Power LEC and 
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
-authors = ["agneya-na"]
+authors = [{name = "agneya-na"}]
 dependencies = [
     "pydantic>=2.5.0",
     "pyyaml>=6.0",
