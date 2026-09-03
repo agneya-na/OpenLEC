@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/agneya-na/OpenLEC/main/docs/assets/logo.png" alt="OpenLEC Logo" width="150" />
+  <img src="https://raw.githubusercontent.com/agneya-na/OpenLEC/main/docs/openlec_logo.png" alt="OpenLEC Logo" width="150" />
 </p>
 
 <h1 align="center">OpenLEC</h1>
