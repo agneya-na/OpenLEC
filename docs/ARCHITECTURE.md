@@ -113,6 +113,10 @@ with stubs (see `tests/test_agents.py`).
   boundary (`tests/test_agents.py`), parser/checker tests are pure Python, and
   the LEC verdict logic and `stat -json` parsing are tested against recorded
   Yosys log excerpts (`tests/test_lec_engine.py`, `tests/test_engine_passes.py`).
-* Integration tests in those two files run real Yosys and skip themselves when
-  `yosys` is not on `PATH`. There is no CI workflow yet, so run them locally
-  with Yosys installed.
+* Integration tests (`requires_yosys`) run real Yosys and skip themselves when
+  `yosys` is not on `PATH`. Set `OPENLEC_REQUIRE_YOSYS=1` to make a missing
+  Yosys an error instead of a skip.
+* CI (`.github/workflows/ci.yml`) runs ruff + mypy, then the full suite, the
+  demo and a CLI RTL-vs-synthesized-netlist check on Python 3.10/3.12/3.13 with
+  Ubuntu's Yosys 0.33, plus one job on the latest OSS CAD Suite Yosys to catch
+  Yosys output-format changes early. `OPENLEC_REQUIRE_YOSYS` is set there.

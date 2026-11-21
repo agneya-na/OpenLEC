@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/agneya-na/OpenLEC/actions/workflows/ci.yml"><img src="https://github.com/agneya-na/OpenLEC/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/agneya-na/OpenLEC/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python"></a>
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
@@ -70,6 +71,7 @@ OpenLEC is designed as an SDK-like infrastructure for AI-integrated EDA verifica
 
 ```text
 OpenLEC/
+├── .github/workflows/ci.yml
 ├── README.md
 ├── LICENSE
 ├── pyproject.toml
@@ -92,6 +94,7 @@ OpenLEC/
 └── tests/
     ├── test_cli.py
     ├── test_agents.py
+    ├── conftest.py
     ├── test_lec_engine.py
     ├── test_engine_passes.py
     └── test_upf_parser.py
@@ -182,7 +185,6 @@ openlec examples/designs/counter.v --revised counter_syn.v --top counter
 - Integrate richer timing/power estimation flows.
 - Add multi-file netlist partitioning and distributed checks.
 - Improve reporting outputs (HTML/PDF).
-- Add CI workflows for Python + Yosys + sample designs.
 - Integrate local open-source LLM workflows for failure diagnosis.
 
 ---

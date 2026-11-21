@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ruff + mypy)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Ruff
+        run: python -m ruff check openlec tests examples
+      - name: Mypy
+        run: python -m mypy openlec
+
+  test:
+    name: Tests (Python ${{ matrix.python }}, Yosys ${{ matrix.yosys }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # "apt" is Ubuntu 24.04's Yosys 0.33; "latest" is the newest OSS CAD Suite
+        # nightly, to catch Yosys output-format changes early.
+        python: ["3.10", "3.12", "3.13"]
+        yosys: [apt]
+        include:
+          - python: "3.12"
+            yosys: latest
+    env:
+      # Fail instead of silently skipping the Yosys integration tests.
+      OPENLEC_REQUIRE_YOSYS: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install Yosys (Ubuntu package)
+        if: matrix.yosys == 'apt'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends yosys
+      - name: Install Yosys (latest OSS CAD Suite)
+        if: matrix.yosys == 'latest'
+        uses: YosysHQ/setup-oss-cad-suite@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Yosys version
+        run: yosys -V
+      - name: Install OpenLEC
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install -e .
+      - name: Tests
+        run: python -m pytest -q -rs
+      - name: Demo (full flow on the bundled examples)
+        run: python examples/run_demo.py
+      - name: CLI smoke test (RTL vs synthesized netlist)
+        run: |
+          yosys -q -p "read_verilog examples/designs/counter.v; synth -top counter; write_verilog -noattr counter_syn.v"
+          openlec examples/designs/counter.v --revised counter_syn.v --top counter --iterations 0
