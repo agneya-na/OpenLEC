@@ -19,6 +19,12 @@ def _build_parser() -> argparse.ArgumentParser:
         description="OpenLEC: Agentic AI LEC + UPF power-aware equivalence verification",
     )
     parser.add_argument("rtl_file", help="Golden RTL/netlist file")
+    parser.add_argument(
+        "--revised",
+        default=None,
+        help="Revised netlist to check against the golden file, e.g. a synthesized "
+        "netlist (default: the golden file itself)",
+    )
     parser.add_argument("--upf", default=None, help="IEEE 1801 UPF file")
     parser.add_argument("--top", required=True, help="Top module name")
     parser.add_argument("--iterations", type=int, default=3, help="Optimization iterations")
@@ -31,11 +37,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
-    rtl_path = Path(args.rtl_file)
-    if not rtl_path.exists():
-        return 2
-    if args.upf and not Path(args.upf).exists():
-        return 2
+    for label, path in (("RTL", args.rtl_file), ("revised", args.revised), ("UPF", args.upf)):
+        if path and not Path(path).exists():
+            print(f"openlec: error: {label} file not found: {path}", file=sys.stderr)
+            return 2
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s %(name)s: %(message)s",
@@ -43,6 +48,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     file_cfg = load_config_file(args.config)
     config = OpenLECConfig(
         rtl_file=args.rtl_file,
+        revised_file=args.revised or file_cfg.get("revised_file"),
         top_module=args.top,
         upf_file=args.upf or file_cfg.get("upf_file"),
         iterations=args.iterations,
@@ -50,8 +56,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         power_budget_uw=args.power_budget,
         verbose=args.verbose,
         yosys_exec=file_cfg.get("yosys_path", "yosys"),
+        timeout_seconds=file_cfg.get("timeout_seconds"),
     )
-    runner = YosysRunner(config.yosys_exec)
+    runner = YosysRunner(config.yosys_exec, timeout_seconds=config.timeout_seconds)
     report = AgenticOrchestrator(config.to_context(), runner).run_verification_flow()
     print(ReportingAgent.render(report))
     return 0 if report.passed else 1

@@ -1,8 +1,10 @@
 """Yosys-free tests for the UPF parser and structural checker."""
 from __future__ import annotations
 
+import pytest
+
 from openlec.engine.upf_checker import UPFChecker
-from openlec.engine.upf_parser import UPFParser
+from openlec.engine.upf_parser import UPFParseError, UPFParser
 
 UPF_TEXT = """\
 # top-level always-on domain
@@ -69,6 +71,22 @@ class TestUPFParser:
         assert ret.retention_power_net == "VDD"
         assert intent.isolated_domains() == {"PD_CORE"}
         assert intent.retained_domains() == {"PD_CORE"}
+
+    def test_applies_to_both_is_accepted(self):
+        intent = UPFParser("unused.upf").parse_text(
+            "create_power_domain PD -elements {u}\n"
+            "set_isolation iso -domain PD -applies_to both -isolation_sense LOW\n"
+        )
+        iso = intent.isolation_strategies[0]
+
+        assert iso.applies_to == "both"
+        assert iso.isolation_sense == "low"
+
+    def test_invalid_option_value_raises_clear_error(self):
+        with pytest.raises(UPFParseError, match="invalid -applies_to 'sideways'"):
+            UPFParser("unused.upf").parse_text(
+                "set_isolation iso -domain PD -applies_to sideways\n"
+            )
 
     def test_parse_file_alias(self, tmp_path):
         upf = tmp_path / "design.upf"

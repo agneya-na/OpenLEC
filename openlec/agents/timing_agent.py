@@ -17,15 +17,15 @@ class TimingAgent(BaseAgent):
     def execute(self, ctx: VerificationContext) -> VerificationContext:
         if ctx.halted:
             return ctx
-        delay = self.estimator.estimate(ctx.revised_netlist or "", ctx.top_module)
+        netlist = ctx.revised_netlist or ""
+        delay = self.estimator.estimate(netlist, ctx.top_module)
+        cells = self.estimator.cell_count(netlist, ctx.top_module)
         prev = ctx.metrics
         ctx.metrics = DesignMetrics(
             delay_ns=delay,
             power_uw=prev.power_uw if prev else 0.0,
-            area_cells=prev.area_cells if prev else 0,
+            area_cells=cells,
         )
-        if ctx.baseline_metrics is None:
-            ctx.baseline_metrics = ctx.metrics
         if delay > ctx.delay_budget_ns:
             self.log(ctx, f"Delay {delay}ns exceeds budget {ctx.delay_budget_ns}ns (warning)")
         else:

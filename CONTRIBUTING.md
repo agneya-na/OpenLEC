@@ -40,7 +40,9 @@ pytest -q
 ## Tests & CI
 
 - Include unit tests for new behavior and add example designs in `examples/` where applicable.
-- The maintainer may add CI workflows; until then run tests locally before submitting.
+- CI (GitHub Actions) runs ruff, mypy and the full test suite with Yosys on every push to
+  `main` and every pull request. Install Yosys locally too: without it the integration
+  tests are skipped (set `OPENLEC_REQUIRE_YOSYS=1` to turn that skip into an error).
 
 ## Author / Maintainer
 

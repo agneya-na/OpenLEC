@@ -67,7 +67,7 @@ class OptimizationAgent(BaseAgent):
             metrics = DesignMetrics(
                 delay_ns=self.timing.estimate(new_netlist, ctx.top_module),
                 power_uw=self.power.estimate(new_netlist, ctx.top_module),
-                area_cells=ctx.metrics.area_cells if ctx.metrics else 0,
+                area_cells=self.timing.cell_count(new_netlist, ctx.top_module),
             )
             if not metrics.within_budget(ctx.delay_budget_ns, ctx.power_budget_uw):
                 ctx.steps.append(

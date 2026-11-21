@@ -3,5 +3,6 @@ pyyaml>=6.0
 rich>=13.7.0
 networkx>=3.2.0
 pytest>=7.4.0
-mypy>=1.7.0
-ruff>=0.1.0
+# Linters pinned to a minor series: new releases add rules, so bump these on purpose.
+mypy~=2.4.1
+ruff~=0.17.6

@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import mkdtemp
 
-from openlec.engine.yosys_runner import YosysRunner
+from openlec.engine.yosys_runner import YosysRunner, quote_path
 
 DEFAULT_PASSES = (
     "opt",
@@ -42,12 +42,16 @@ class Optimizer:
         output_dir.mkdir(parents=True, exist_ok=True)
         out_netlist = output_dir / f"optimized_iter{iteration}.v"
 
+        # `proc` must run before any pass: without it Yosys writes the raw
+        # processes back out and `always @(posedge clk or posedge rst)` is split
+        # into two separate always blocks, which changes the design.
         script = (
-            f"read_verilog {in_netlist}\n"
-            f"hierarchy -top {top_module}\n"
+            f"read_verilog {quote_path(in_netlist)}\n"
+            f"hierarchy -check -top {top_module}\n"
+            "proc\n"
             f"{pass_cmd}\n"
             "opt_clean -purge\n"
-            f"write_verilog -noattr {out_netlist}\n"
+            f"write_verilog -noattr {quote_path(out_netlist)}\n"
         )
         self.runner.run_script(script)
         if not out_netlist.exists():

@@ -16,15 +16,27 @@ class ParsingAgent(BaseAgent):
         if not rtl.exists():
             ctx.halt(f"RTL file not found: {rtl}")
             return ctx
+        revised = Path(ctx.revised_file) if ctx.revised_file else rtl
+        if not revised.exists():
+            ctx.halt(f"Revised netlist not found: {revised}")
+            return ctx
         if ctx.upf_file:
             upf = Path(ctx.upf_file)
             if not upf.exists():
                 ctx.halt(f"UPF file not found: {upf}")
                 return ctx
-            ctx.upf_intent = UPFParser(upf).parse()
+            try:
+                ctx.upf_intent = UPFParser(upf).parse()
+            except (OSError, ValueError) as exc:  # unreadable file or invalid UPF value
+                ctx.halt(f"UPF parse error in {upf}: {exc}")
+                return ctx
             if not ctx.top_module and ctx.upf_intent.design_top:
                 ctx.top_module = ctx.upf_intent.design_top
         ctx.golden_netlist = rtl
-        ctx.revised_netlist = rtl  # baseline: revised == golden
-        self.log(ctx, f"Parsed RTL={rtl.name}" + (f", UPF domains={ctx.upf_intent.domain_names()}" if ctx.upf_intent else ""))
+        ctx.revised_netlist = revised  # without --revised: golden checked against itself
+        self.log(
+            ctx,
+            f"Parsed golden={rtl.name}, revised={revised.name}"
+            + (f", UPF domains={ctx.upf_intent.domain_names()}" if ctx.upf_intent else ""),
+        )
         return ctx

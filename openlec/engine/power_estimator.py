@@ -21,9 +21,9 @@ class PowerEstimator:
         self._stats = TimingEstimator(self.runner)
 
     def estimate(self, netlist: str | Path, top_module: str) -> float:
-        cells, regs = self._stats._cell_stats(netlist, top_module)
-        if cells <= 0:
+        stats = self._stats.stats(netlist, top_module)
+        if stats.cells <= 0:
             return 0.0
-        dynamic = cells * DYNAMIC_UW_PER_CELL * ACTIVITY_FACTOR
-        leakage = cells * LEAK_UW_PER_CELL + regs * LEAK_UW_PER_REG
+        dynamic = stats.cells * DYNAMIC_UW_PER_CELL * ACTIVITY_FACTOR
+        leakage = stats.cells * LEAK_UW_PER_CELL + stats.registers * LEAK_UW_PER_REG
         return round(dynamic + leakage, 3)
