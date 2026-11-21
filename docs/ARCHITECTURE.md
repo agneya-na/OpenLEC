@@ -46,7 +46,9 @@ UPFParser UPFChecker LECEngine TimingEst  PowerEst   Optimizer   (report)
 ## Data flow and halt semantics
 
 1. `ParsingAgent` validates inputs and loads the UPF intent
-   (Conformal analogue: `READ DESIGN` / `READ POWER INTENT`).
+   (Conformal analogue: `READ DESIGN` / `READ POWER INTENT`). The golden design
+   is `rtl_file`; the revised design is `revised_file` (CLI `--revised`), or the
+   golden file itself when none is given.
 2. `PowerIntentAgent` runs structural UPF checks; a failed isolation check
    **halts** the pipeline (an un-isolated switched domain is a hard error).
 3. `EquivalenceAgent` runs `LECEngine` (Conformal: `COMPARE` / `ANALYZE ABORT`).
@@ -76,7 +78,7 @@ with stubs (see `tests/test_agents.py`).
 
 | Cadence Conformal | OpenLEC |
 |---|---|
-| `READ DESIGN` | `ParsingAgent` + Yosys `read_verilog` |
+| `READ DESIGN -golden` / `-revised` | `rtl_file` / `--revised` → `ParsingAgent` + Yosys `read_verilog` |
 | `READ POWER INTENT` | `UPFParser.parse()` |
 | `COMPARE` / `ANALYZE SETUP` | `LECEngine.run_equivalence_check()` (`equiv_make/simple/induct/status`) |
 | `ANALYZE ABORT` | miter + `sat` BMC counterexample search; `LECVerdict.ABORT` + `abort_points` |

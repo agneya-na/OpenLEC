@@ -152,12 +152,26 @@ Expected output: PASS/FAIL-style report with delay/power/area estimates, UPF sta
 
 ```bash
 openlec <rtl_file> \
+  --revised <netlist.v> \
   --upf <file.upf> \
   --top <top_module> \
   --iterations 5 \
   --delay-budget 10.0 \
   --power-budget 1000 \
   -v
+```
+
+`<rtl_file>` is the golden design. `--revised` is the design to check against it,
+for example a synthesized netlist; without it, the golden file is checked against
+itself and only the optimization passes are verified. Both files must use the same
+top module name. Gate-level netlists made of Yosys internal cells work as-is;
+netlists built from standard-cell libraries are not supported yet (no Liberty input).
+
+Example: verify a Yosys-synthesized netlist against its RTL:
+
+```bash
+yosys -p "read_verilog examples/designs/counter.v; synth -top counter; write_verilog -noattr counter_syn.v"
+openlec examples/designs/counter.v --revised counter_syn.v --top counter
 ```
 
 ---

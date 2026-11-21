@@ -13,6 +13,7 @@ from openlec.models.schemas import VerificationContext
 class OpenLECConfig(BaseModel):
     rtl_file: str
     top_module: str
+    revised_file: str | None = None  # None = check the golden file against itself
     upf_file: str | None = None
     iterations: int = 3
     delay_budget_ns: float = 10.0
@@ -24,6 +25,7 @@ class OpenLECConfig(BaseModel):
     def to_context(self) -> VerificationContext:
         return VerificationContext(
             rtl_file=Path(self.rtl_file),
+            revised_file=Path(self.revised_file) if self.revised_file else None,
             top_module=self.top_module,
             upf_file=Path(self.upf_file) if self.upf_file else None,
             iterations=self.iterations,

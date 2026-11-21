@@ -65,6 +65,25 @@ class TestParsingAgent:
         assert ctx.golden_netlist == ctx.rtl_file
         assert ctx.revised_netlist == ctx.rtl_file
 
+    def test_revised_file_becomes_revised_netlist(self, tmp_path):
+        revised = tmp_path / "top_syn.v"
+        revised.write_text(RTL)
+        ctx = _ctx(tmp_path, revised_file=revised)
+
+        ctx = ParsingAgent().execute(ctx)
+
+        assert not ctx.halted
+        assert ctx.golden_netlist == ctx.rtl_file
+        assert ctx.revised_netlist == revised
+
+    def test_missing_revised_halts(self, tmp_path):
+        ctx = _ctx(tmp_path, revised_file=tmp_path / "missing_syn.v")
+
+        ctx = ParsingAgent().execute(ctx)
+
+        assert ctx.halted is True
+        assert "Revised netlist not found" in ctx.halt_reason
+
     def test_invalid_upf_halts_instead_of_crashing(self, tmp_path):
         ctx = _ctx(tmp_path, upf_text="set_isolation iso -domain PD -applies_to sideways\n")
 
@@ -195,7 +214,9 @@ class TestReportingAgent:
 
         assert ctx.report is not None
         assert ctx.report.passed is True
-        assert "PASS" in ctx.report.to_text()
+        text = ctx.report.to_text()
+        assert "PASS" in text
+        assert f"Revised: {ctx.rtl_file}" in text  # no --revised: golden vs itself
 
     def test_halted_context_fails_report(self, tmp_path):
         ctx = _ctx(tmp_path)

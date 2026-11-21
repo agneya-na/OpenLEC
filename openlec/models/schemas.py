@@ -15,8 +15,9 @@ from openlec.models.upf_models import UPFCheckResult, UPFIntent
 class VerificationContext:
     """Mutable state shared by all agents during one verification run."""
 
-    rtl_file: Path
+    rtl_file: Path  # golden design
     top_module: str
+    revised_file: Path | None = None  # design under check; None = the golden file
     upf_file: Path | None = None
     iterations: int = 3
     delay_budget_ns: float = 10.0
@@ -51,6 +52,8 @@ class VerificationReport:
     upf_checks: dict[str, UPFCheckResult] = field(default_factory=dict)
     metrics: DesignMetrics | None = None
     steps: list[OptimizationStep] = field(default_factory=list)
+    golden_file: str = ""
+    revised_file: str = ""
     generated_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
     )
@@ -68,6 +71,9 @@ class VerificationReport:
             f"Status : {'PASS' if self.passed else 'FAIL'}",
             f"Summary: {self.summary}",
         ]
+        if self.golden_file:
+            lines.append(f"Golden : {self.golden_file}")
+            lines.append(f"Revised: {self.revised_file or self.golden_file}")
         if self.lec_result:
             lines.append(f"LEC    : {self.lec_result.verdict.value} - {self.lec_result.message}")
             if self.lec_result.counterexample:
