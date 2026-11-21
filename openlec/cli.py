@@ -50,8 +50,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         power_budget_uw=args.power_budget,
         verbose=args.verbose,
         yosys_exec=file_cfg.get("yosys_path", "yosys"),
+        timeout_seconds=file_cfg.get("timeout_seconds"),
     )
-    runner = YosysRunner(config.yosys_exec)
+    runner = YosysRunner(config.yosys_exec, timeout_seconds=config.timeout_seconds)
     report = AgenticOrchestrator(config.to_context(), runner).run_verification_flow()
     print(ReportingAgent.render(report))
     return 0 if report.passed else 1

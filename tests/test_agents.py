@@ -65,6 +65,14 @@ class TestParsingAgent:
         assert ctx.golden_netlist == ctx.rtl_file
         assert ctx.revised_netlist == ctx.rtl_file
 
+    def test_invalid_upf_halts_instead_of_crashing(self, tmp_path):
+        ctx = _ctx(tmp_path, upf_text="set_isolation iso -domain PD -applies_to sideways\n")
+
+        ctx = ParsingAgent().execute(ctx)
+
+        assert ctx.halted is True
+        assert "UPF parse error" in ctx.halt_reason
+
 
 class TestPowerIntentAgent:
     def test_good_upf_passes(self, tmp_path):
@@ -88,14 +96,16 @@ class TestPowerIntentAgent:
 class TestTimingPowerAgents:
     def test_timing_agent_records_estimate(self, tmp_path):
         agent = TimingAgent()
-        agent.estimator = type("Stub", (), {"estimate": lambda s, n, t: 5.0})()
+        agent.estimator = type(
+            "Stub", (), {"estimate": lambda s, n, t: 5.0, "cell_count": lambda s, n, t: 12}
+        )()
 
-        ctx = TimingAgent.__init__ and _ctx(tmp_path) or None
         ctx = _ctx(tmp_path, delay_budget_ns=10.0)
         ctx = agent.execute(ctx)
 
         assert ctx.metrics is not None
         assert ctx.metrics.delay_ns == 5.0
+        assert ctx.metrics.area_cells == 12
         assert not ctx.halted
 
     def test_power_agent_records_estimate(self, tmp_path):
@@ -132,6 +142,9 @@ class TestOptimizationAgent:
             def estimate(self, netlist, top):
                 return self.value
 
+            def cell_count(self, netlist, top):
+                return 7
+
         agent.optimizer = _Opt()
         agent.lec = _Lec()
         agent.timing = _Est(delay)
@@ -150,6 +163,7 @@ class TestOptimizationAgent:
 
         assert len(ctx.steps) == 1
         assert ctx.steps[0].verdict is StepVerdict.ACCEPT
+        assert ctx.steps[0].metrics.area_cells == 7
         assert ctx.revised_netlist == str(out)
 
     def test_rejects_pass_over_budget(self, tmp_path):
@@ -192,6 +206,37 @@ class TestReportingAgent:
 
         assert ctx.report.passed is False
         assert "FAIL" in ctx.report.to_text()
+
+    def test_over_budget_fails_report(self, tmp_path):
+        ctx = _ctx(tmp_path, delay_budget_ns=1.0, power_budget_uw=100.0)
+        ctx.lec_result = LECResult(verdict=LECVerdict.EQUIVALENT, message="ok")
+        ctx.metrics = DesignMetrics(delay_ns=2.5, power_uw=50.0, area_cells=3)
+
+        ctx = ReportingAgent().execute(ctx)
+
+        assert ctx.report.passed is False
+        assert "timing budget" in ctx.report.summary
+        assert "power budget" not in ctx.report.summary
+
+    def test_inconclusive_lec_fails_report(self, tmp_path):
+        ctx = _ctx(tmp_path)
+        ctx.lec_result = LECResult(verdict=LECVerdict.ABORT, message="unproven")
+
+        ctx = ReportingAgent().execute(ctx)
+
+        assert ctx.report.passed is False
+        assert "LEC (Abort)" in ctx.report.summary
+
+    def test_counterexample_is_rendered(self, tmp_path):
+        ctx = _ctx(tmp_path)
+        ctx.halt("LEC NONEQUIVALENT: stub")
+        ctx.lec_result = LECResult(
+            verdict=LECVerdict.NONEQUIVALENT, message="neq", counterexample="  Time Signal"
+        )
+
+        text = ReportingAgent().execute(ctx).report.to_text()
+
+        assert "Counterexample:" in text
 
 
 class _StubBase(BaseAgent):

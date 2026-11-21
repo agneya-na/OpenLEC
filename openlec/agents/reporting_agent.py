@@ -10,18 +10,34 @@ class ReportingAgent(BaseAgent):
     name = "reporting"
 
     def execute(self, ctx: VerificationContext) -> VerificationContext:
-        lec_ok = ctx.lec_result is not None and ctx.lec_result.verdict is LECVerdict.EQUIVALENT
-        upf_ok = all(r.passed for r in ctx.upf_checks.values()) if ctx.upf_checks else True
-        passed = (not ctx.halted) and lec_ok and upf_ok
-        summary = ctx.halt_reason if ctx.halted else (
-            "All gates passed (LEC + UPF + budgets)." if passed
-            else "One or more gates failed or were inconclusive."
-        )
+        failed = self._failed_gates(ctx)
+        passed = not ctx.halted and not failed
+        if ctx.halted:
+            summary = ctx.halt_reason
+        elif passed:
+            summary = "All gates passed (LEC + UPF + budgets)."
+        else:
+            summary = "Failed gates: " + "; ".join(failed)
         ctx.report = VerificationReport(
             passed=passed, summary=summary, lec_result=ctx.lec_result,
             upf_checks=ctx.upf_checks, metrics=ctx.metrics, steps=ctx.steps,
         )
         return ctx
+
+    @staticmethod
+    def _failed_gates(ctx: VerificationContext) -> list[str]:
+        failed: list[str] = []
+        if ctx.lec_result is None:
+            failed.append("LEC (not run)")
+        elif ctx.lec_result.verdict is not LECVerdict.EQUIVALENT:
+            failed.append(f"LEC ({ctx.lec_result.verdict.value})")
+        failed += [f"UPF {family}" for family, r in ctx.upf_checks.items() if not r.passed]
+        m = ctx.metrics
+        if m is not None and m.delay_ns > ctx.delay_budget_ns:
+            failed.append(f"timing budget ({m.delay_ns}ns > {ctx.delay_budget_ns}ns)")
+        if m is not None and m.power_uw > ctx.power_budget_uw:
+            failed.append(f"power budget ({m.power_uw}uW > {ctx.power_budget_uw}uW)")
+        return failed
 
     @staticmethod
     def render(report: VerificationReport) -> str:

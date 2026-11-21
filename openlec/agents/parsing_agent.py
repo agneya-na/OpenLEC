@@ -21,7 +21,11 @@ class ParsingAgent(BaseAgent):
             if not upf.exists():
                 ctx.halt(f"UPF file not found: {upf}")
                 return ctx
-            ctx.upf_intent = UPFParser(upf).parse()
+            try:
+                ctx.upf_intent = UPFParser(upf).parse()
+            except (OSError, ValueError) as exc:  # unreadable file or invalid UPF value
+                ctx.halt(f"UPF parse error in {upf}: {exc}")
+                return ctx
             if not ctx.top_module and ctx.upf_intent.design_top:
                 ctx.top_module = ctx.upf_intent.design_top
         ctx.golden_netlist = rtl

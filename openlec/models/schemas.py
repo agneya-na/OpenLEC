@@ -70,6 +70,9 @@ class VerificationReport:
         ]
         if self.lec_result:
             lines.append(f"LEC    : {self.lec_result.verdict.value} - {self.lec_result.message}")
+            if self.lec_result.counterexample:
+                lines.append("Counterexample:")
+                lines.append(self.lec_result.counterexample)
         if self.upf_checks:
             for family, res in self.upf_checks.items():
                 lines.append(

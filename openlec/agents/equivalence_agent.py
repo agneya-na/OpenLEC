@@ -23,8 +23,8 @@ class EquivalenceAgent(BaseAgent):
         ctx.lec_result = result
         if result.verdict is LECVerdict.NONEQUIVALENT:
             ctx.halt(f"LEC NONEQUIVALENT: {result.message}")
-        elif result.verdict is LECVerdict.ABORT:
-            self.log(ctx, f"LEC inconclusive (abort): {result.message}")
+        elif result.verdict is LECVerdict.EQUIVALENT:
+            self.log(ctx, f"LEC gate: EQUIVALENT ({result.message})")
         else:
-            self.log(ctx, "LEC gate: EQUIVALENT")
+            self.log(ctx, f"LEC {result.verdict.value.lower()}: {result.message}")
         return ctx

@@ -5,7 +5,7 @@ from openlec.engine.power_estimator import PowerEstimator
 from openlec.engine.timing_estimator import TimingEstimator
 from openlec.engine.upf_checker import UPFChecker
 from openlec.engine.upf_parser import UPFParser
-from openlec.engine.yosys_runner import YosysRunner
+from openlec.engine.yosys_runner import YosysError, YosysRunner
 
 __all__ = ["LECEngine", "Optimizer", "PowerEstimator", "TimingEstimator",
-           "UPFChecker", "UPFParser", "YosysRunner"]
+           "UPFChecker", "UPFParser", "YosysError", "YosysRunner"]

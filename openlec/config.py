@@ -19,6 +19,7 @@ class OpenLECConfig(BaseModel):
     power_budget_uw: float = 1000.0
     verbose: bool = False
     yosys_exec: str = "yosys"
+    timeout_seconds: float | None = None  # per Yosys invocation; None = no limit
 
     def to_context(self) -> VerificationContext:
         return VerificationContext(

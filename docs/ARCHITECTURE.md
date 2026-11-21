@@ -49,16 +49,24 @@ UPFParser UPFChecker LECEngine TimingEst  PowerEst   Optimizer   (report)
    (Conformal analogue: `READ DESIGN` / `READ POWER INTENT`).
 2. `PowerIntentAgent` runs structural UPF checks; a failed isolation check
    **halts** the pipeline (an un-isolated switched domain is a hard error).
-3. `EquivalenceAgent` runs the Yosys `equiv_*` SAT flow (Conformal: `COMPARE`).
-   `NONEQUIVALENT` halts; `ABORT` (SAT timeout/inconclusive) is recorded but does
-   not halt — the final verdict still fails because `lec_ok` is false.
-4. `TimingAgent` / `PowerAgent` fill `DesignMetrics` (heuristic estimators until
+3. `EquivalenceAgent` runs `LECEngine` (Conformal: `COMPARE` / `ANALYZE ABORT`).
+   Each design is loaded into its own Yosys design (`design -stash`) and
+   flattened, then the `equiv_make/simple/induct/status` flow tries to prove
+   every compare point. If points stay unproven, a miter of the two designs is
+   bounded-model-checked (`sat -seq N`, all-zero initial state) to look for a
+   concrete counterexample. `NONEQUIVALENT` (counterexample found) halts;
+   `ABORT` (setup error, timeout, or unproven without a counterexample) and
+   `INCONCLUSIVE` (no compare points) are recorded but do not halt — the final
+   verdict still fails.
+4. `TimingAgent` / `PowerAgent` fill `DesignMetrics` from the Yosys
+   `stat -json` cell/register counts (heuristic estimators until
    OpenSTA/Liberty integration lands).
 5. `OptimizationAgent` proposes synthesis passes; a pass is accepted only if the
    LEC gate passes **and** metrics stay within budget; otherwise the step is
    rejected and the previous netlist is kept.
 6. `ReportingAgent` always runs (also on halt) and emits
-   `VerificationReport.to_text()`.
+   `VerificationReport.to_text()`. The run passes only if LEC is `EQUIVALENT`,
+   every UPF family passes, and the final delay/power are within budget.
 
 `VerificationContext` is the single mutable state object; agents never talk to
 each other directly, only through it. This keeps agents independently testable
@@ -71,7 +79,7 @@ with stubs (see `tests/test_agents.py`).
 | `READ DESIGN` | `ParsingAgent` + Yosys `read_verilog` |
 | `READ POWER INTENT` | `UPFParser.parse()` |
 | `COMPARE` / `ANALYZE SETUP` | `LECEngine.run_equivalence_check()` (`equiv_make/simple/induct/status`) |
-| `ANALYZE ABORT` | `LECVerdict.ABORT` + `abort_points` |
+| `ANALYZE ABORT` | miter + `sat` BMC counterexample search; `LECVerdict.ABORT` + `abort_points` |
 | `CHECK LOWPOWER CELLS` / `COMPARE POWER CONSISTENCY` | `UPFChecker` rule families |
 | `REPORT LOWPOWER VERIFICATION` | `ReportingAgent` / `VerificationReport` |
 | dofile scripting | `AgenticOrchestrator` pipeline |
@@ -81,8 +89,9 @@ with stubs (see `tests/test_agents.py`).
 | Symbol | Meaning |
 |---|---|
 | `LECVerdict.EQUIVALENT` | SAT proof completed, all compare points proven |
-| `LECVerdict.NONEQUIVALENT` | counter-example exists → hard halt |
-| `LECVerdict.ABORT` | SAT inconclusive/timeout → fail-soft, no halt |
+| `LECVerdict.NONEQUIVALENT` | concrete counterexample found (`LECResult.counterexample`) → hard halt |
+| `LECVerdict.ABORT` | setup error, timeout, or points unproven with no counterexample within the BMC bound → fail-soft, no halt |
+| `LECVerdict.INCONCLUSIVE` | no compare points matched → fail-soft, no halt |
 | `StepVerdict.ACCEPT` | optimization pass kept (LEC + budgets held) |
 | `StepVerdict.REJECT` | pass reverted, previous netlist retained |
 
@@ -99,7 +108,9 @@ with stubs (see `tests/test_agents.py`).
 ## Testing strategy
 
 * Unit tests are **Yosys-free**: engines are replaced with stubs at the agent
-  boundary (`tests/test_agents.py`), parser/checker tests are pure Python.
-* `tests/test_lec_engine.py` is an integration test and skips itself when
-  `yosys` is not on `PATH`.
-* CI installs Yosys so the integration test runs on every push/PR.
+  boundary (`tests/test_agents.py`), parser/checker tests are pure Python, and
+  the LEC verdict logic and `stat -json` parsing are tested against recorded
+  Yosys log excerpts (`tests/test_lec_engine.py`, `tests/test_engine_passes.py`).
+* Integration tests in those two files run real Yosys and skip themselves when
+  `yosys` is not on `PATH`. There is no CI workflow yet, so run them locally
+  with Yosys installed.

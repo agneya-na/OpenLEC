@@ -20,7 +20,7 @@ class PowerAgent(BaseAgent):
         power = self.estimator.estimate(ctx.revised_netlist or "", ctx.top_module)
         prev = ctx.metrics or DesignMetrics()
         ctx.metrics = DesignMetrics(delay_ns=prev.delay_ns, power_uw=power, area_cells=prev.area_cells)
-        if ctx.baseline_metrics is None:
+        if ctx.baseline_metrics is None:  # timing ran first, so delay+power+area are all set
             ctx.baseline_metrics = ctx.metrics
         if power > ctx.power_budget_uw:
             self.log(ctx, f"Power {power}uW exceeds budget {ctx.power_budget_uw}uW (warning)")

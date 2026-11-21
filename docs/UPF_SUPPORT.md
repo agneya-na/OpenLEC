@@ -11,7 +11,7 @@ backslash line continuations, and accepts brace lists (`-elements {a b}`).
 | `set_design_top` | `<name>` | sets `UPFIntent.design_top` |
 | `create_power_domain` | `-elements {…}`, `-include_scope` | multiple domains supported |
 | `create_supply_net` | `-domain` | nets without domain allowed |
-| `set_isolation` | `-domain`, `-applies_to`, `-clamp_value`, `-isolation_signal`, `-isolation_sense`, `-location` | any option order |
+| `set_isolation` | `-domain`, `-applies_to` (`inputs`/`outputs`/`both`), `-clamp_value`, `-isolation_signal`, `-isolation_sense` (`high`/`low`), `-location` | any option order; an invalid enum value raises `UPFParseError` and halts the flow |
 | `set_retention` | `-domain`, `-retention_power_net`, `-retention_ground_net`, `-save_signal`, `-restore_signal` | any option order |
 
 ## Structural rule checks (`UPFChecker`)

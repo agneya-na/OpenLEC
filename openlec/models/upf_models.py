@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 class AppliesTo(str, Enum):
     INPUTS = "inputs"
     OUTPUTS = "outputs"
-    ALL = "all"
+    BOTH = "both"  # IEEE 1801 value for inputs + outputs
+    ALL = "all"    # legacy non-standard spelling, kept for backward compatibility
 
 class IsolationSense(str, Enum):
     HIGH = "high"
