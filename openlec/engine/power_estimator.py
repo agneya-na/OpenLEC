@@ -4,8 +4,7 @@ power = dynamic(activity * cells * per-cell dynamic) + leakage(cells + registers
 """
 from __future__ import annotations
 
-from pathlib import Path
-
+from openlec.engine.design_source import NetlistLike
 from openlec.engine.timing_estimator import TimingEstimator
 from openlec.engine.yosys_runner import YosysRunner
 
@@ -20,7 +19,7 @@ class PowerEstimator:
         self.runner = runner or YosysRunner()
         self._stats = TimingEstimator(self.runner)
 
-    def estimate(self, netlist: str | Path, top_module: str) -> float:
+    def estimate(self, netlist: NetlistLike, top_module: str) -> float:
         stats = self._stats.stats(netlist, top_module)
         if stats.cells <= 0:
             return 0.0

@@ -17,6 +17,7 @@ jobs:
   lint:
     name: Lint (ruff + mypy)
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -33,6 +34,8 @@ jobs:
   test:
     name: Tests (Python ${{ matrix.python }}, Yosys ${{ matrix.yosys }})
     runs-on: ubuntu-24.04
+    # A SAT proof that never finishes must not hold the runner for hours.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -76,3 +79,8 @@ jobs:
         run: |
           yosys -q -p "read_verilog examples/designs/counter.v; synth -top counter; write_verilog -noattr counter_syn.v"
           openlec examples/designs/counter.v --revised counter_syn.v --top counter --iterations 0
+      - name: CLI smoke test (multi-file SystemVerilog via a file list)
+        run: |
+          openlec -F examples/designs/sv/accum_top.f --top accum_top --iterations 1
+          yosys -q -p "read_verilog -sv -Iexamples/designs/sv/include examples/designs/sv/rtl/accum_core.sv examples/designs/sv/rtl/accum_top.sv; synth -top accum_top; write_verilog -noattr accum_top_syn.v"
+          openlec -F examples/designs/sv/accum_top.f --revised accum_top_syn.v --top accum_top --iterations 0

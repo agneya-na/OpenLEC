@@ -88,7 +88,7 @@ OpenLEC/
 │   ├── engine/
 │   └── agents/
 ├── examples/
-│   ├── designs/
+│   ├── designs/        # includes sv/: multi-file SystemVerilog example + file list
 │   ├── upf/
 │   └── run_demo.py
 └── tests/
@@ -175,6 +175,42 @@ Example: verify a Yosys-synthesized netlist against its RTL:
 ```bash
 yosys -p "read_verilog examples/designs/counter.v; synth -top counter; write_verilog -noattr counter_syn.v"
 openlec examples/designs/counter.v --revised counter_syn.v --top counter
+```
+
+### Multi-file and SystemVerilog designs
+
+Each side can be several files, given directly or through simulator-style file lists:
+
+```bash
+# Several golden files, an include directory and a macro
+openlec rtl/pkg.sv rtl/core.sv rtl/top.sv -I include -D WIDTH=32 --top top
+
+# File lists for both sides
+openlec -F rtl/golden.f --revised-F syn/revised.f --top top
+```
+
+| Option | Applies to | Meaning |
+|---|---|---|
+| `rtl_file ...` | golden | One or more golden files |
+| `-f LIST` / `-F LIST` | golden | File list; `-f` resolves relative paths from the current directory, `-F` from the list's own folder |
+| `--revised FILE` (repeatable) | revised | Revised file(s) |
+| `--revised-f LIST` / `--revised-F LIST` | revised | Revised file list (same path rules) |
+| `-I DIR` | both | `` `include `` search directory |
+| `-D NAME[=VALUE]` | both | Macro definition; overrides the same macro from a file list |
+| `--sv` | both | Read every file as SystemVerilog (`.sv`/`.svh` files always are) |
+
+File lists support one file per token, `//` and `#` comments, `+incdir+DIR`,
+`+define+NAME=VALUE`, `-I`, `-D`, `-v FILE`, nested `-f`/`-F` lists and `$VAR`
+environment variables. Other options (`-y`, `+libext+`, ...) are skipped with a warning.
+Macros defined while reading the golden design never leak into the revised design.
+
+Yosys cannot take an include directory containing a space; OpenLEC then uses the
+path relative to the current folder, and reports an error if that still has a space.
+
+Example: a SystemVerilog design split across files with a shared include:
+
+```bash
+openlec -F examples/designs/sv/accum_top.f --top accum_top
 ```
 
 ---

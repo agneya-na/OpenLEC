@@ -69,7 +69,7 @@ class YosysRunner:
         if result.returncode != 0:
             # Yosys reports errors on stdout (its log), not only on stderr.
             log = result.stdout + result.stderr
-            errors = [ln.strip() for ln in log.splitlines() if ln.lstrip().startswith("ERROR")]
+            errors = [ln.strip() for ln in log.splitlines() if "ERROR:" in ln]
             detail = "; ".join(errors) or result.stderr.strip() or f"exit code {result.returncode}"
             logger.error("Yosys execution failed: %s", detail)
             raise YosysError(f"Yosys execution failed: {detail}", log=log)

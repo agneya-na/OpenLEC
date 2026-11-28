@@ -48,7 +48,11 @@ UPFParser UPFChecker LECEngine TimingEst  PowerEst   Optimizer   (report)
 1. `ParsingAgent` validates inputs and loads the UPF intent
    (Conformal analogue: `READ DESIGN` / `READ POWER INTENT`). The golden design
    is `rtl_file`; the revised design is `revised_file` (CLI `--revised`), or the
-   golden file itself when none is given.
+   golden file itself when none is given. Multi-file inputs (file lists, include
+   directories, defines, SystemVerilog) arrive as `golden_source` /
+   `revised_source` (`engine/design_source.py`); every engine reads a
+   `DesignSource` or a plain path, and each side's macros are reset before it is
+   read (`design -reset-vlog`) so they cannot leak between golden and revised.
 2. `PowerIntentAgent` runs structural UPF checks; a failed isolation check
    **halts** the pipeline (an un-isolated switched domain is a hard error).
 3. `EquivalenceAgent` runs `LECEngine` (Conformal: `COMPARE` / `ANALYZE ABORT`).
@@ -78,7 +82,7 @@ with stubs (see `tests/test_agents.py`).
 
 | Cadence Conformal | OpenLEC |
 |---|---|
-| `READ DESIGN -golden` / `-revised` | `rtl_file` / `--revised` → `ParsingAgent` + Yosys `read_verilog` |
+| `READ DESIGN -golden` / `-revised` | `rtl_file` / `--revised` (or `-f`/`-F` and `--revised-f`/`--revised-F` file lists) → `ParsingAgent` + Yosys `read_verilog [-sv] -I -D` |
 | `READ POWER INTENT` | `UPFParser.parse()` |
 | `COMPARE` / `ANALYZE SETUP` | `LECEngine.run_equivalence_check()` (`equiv_make/simple/induct/status`) |
 | `ANALYZE ABORT` | miter + `sat` BMC counterexample search; `LECVerdict.ABORT` + `abort_points` |

@@ -4,21 +4,29 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from openlec.models.lec_result import LECResult
 from openlec.models.metrics import DesignMetrics
 from openlec.models.optimization_step import OptimizationStep, StepVerdict
 from openlec.models.upf_models import UPFCheckResult, UPFIntent
 
+if TYPE_CHECKING:  # engine imports models, so only import for type checking
+    from openlec.engine.design_source import DesignSource
+
 
 @dataclass
 class VerificationContext:
     """Mutable state shared by all agents during one verification run."""
 
-    rtl_file: Path  # golden design
+    rtl_file: Path  # golden design (first file when golden_source is given)
     top_module: str
     revised_file: Path | None = None  # design under check; None = the golden file
     upf_file: Path | None = None
+    # Multi-file / SystemVerilog / include-dir / define inputs. When set, these
+    # replace rtl_file / revised_file as what is read into Yosys.
+    golden_source: DesignSource | None = None
+    revised_source: DesignSource | None = None
     iterations: int = 3
     delay_budget_ns: float = 10.0
     power_budget_uw: float = 1000.0
@@ -26,8 +34,8 @@ class VerificationContext:
 
     # Produced along the flow
     upf_intent: UPFIntent | None = None
-    golden_netlist: Path | str | None = None
-    revised_netlist: Path | str | None = None
+    golden_netlist: DesignSource | Path | str | None = None
+    revised_netlist: DesignSource | Path | str | None = None
     lec_result: LECResult | None = None
     upf_checks: dict[str, UPFCheckResult] = field(default_factory=dict)
     baseline_metrics: DesignMetrics | None = None
