@@ -9,10 +9,10 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
-from openlec.engine.yosys_runner import YosysRunner, quote_path
+from openlec.engine.design_source import NetlistLike, as_source
+from openlec.engine.yosys_runner import YosysRunner
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +55,16 @@ def parse_stat_json(log: str, top_module: str) -> NetlistStats:
     return NetlistStats(cells=cells, registers=registers)
 
 
-def collect_stats(runner: YosysRunner, netlist: str | Path, top_module: str) -> NetlistStats:
+def collect_stats(runner: YosysRunner, netlist: NetlistLike, top_module: str) -> NetlistStats:
     """Elaborate and flatten the netlist in Yosys, then count its cells."""
+    try:
+        read = as_source(netlist).read_script()
+    except ValueError as exc:
+        logger.warning("Could not collect netlist stats for %s: %s", netlist, exc)
+        return NetlistStats()
     script = (
-        f"read_verilog {quote_path(netlist)}\n"
-        f"hierarchy -check -top {top_module}\n"
+        read
+        + f"hierarchy -check -top {top_module}\n"
         "proc\n"
         "flatten\n"
         "opt_clean\n"

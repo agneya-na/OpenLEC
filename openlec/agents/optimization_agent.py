@@ -50,7 +50,7 @@ class OptimizationAgent(BaseAgent):
                 continue
 
             lec = self.lec.run_equivalence_check(
-                str(ctx.golden_netlist), str(new_netlist), ctx.top_module
+                ctx.golden_netlist or ctx.rtl_file, new_netlist, ctx.top_module
             )
             if lec.verdict is not LECVerdict.EQUIVALENT:
                 ctx.steps.append(

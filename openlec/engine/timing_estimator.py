@@ -6,8 +6,8 @@ estimated logic levels ~ log2(cells), one gate delay per level.
 from __future__ import annotations
 
 import math
-from pathlib import Path
 
+from openlec.engine.design_source import NetlistLike, as_source
 from openlec.engine.netlist_stats import NetlistStats, collect_stats
 from openlec.engine.yosys_runner import YosysRunner
 
@@ -17,24 +17,20 @@ GATE_DELAY_NS = 0.05
 class TimingEstimator:
     def __init__(self, runner: YosysRunner | None = None) -> None:
         self.runner = runner or YosysRunner()
-        self._cache: dict[tuple[str, str, int], NetlistStats] = {}
+        self._cache: dict[tuple[object, ...], NetlistStats] = {}
 
-    def stats(self, netlist: str | Path, top_module: str) -> NetlistStats:
-        """Cell/register counts, cached per (file, top, mtime) to avoid re-running Yosys."""
-        path = Path(netlist)
-        try:
-            mtime = path.stat().st_mtime_ns
-        except OSError:
-            mtime = -1
-        key = (str(path), top_module, mtime)
+    def stats(self, netlist: NetlistLike, top_module: str) -> NetlistStats:
+        """Cell/register counts, cached per (files + mtimes, options, top)."""
+        source = as_source(netlist)
+        key = (source.cache_key(), top_module)
         if key not in self._cache:
-            self._cache[key] = collect_stats(self.runner, path, top_module)
+            self._cache[key] = collect_stats(self.runner, source, top_module)
         return self._cache[key]
 
-    def cell_count(self, netlist: str | Path, top_module: str) -> int:
+    def cell_count(self, netlist: NetlistLike, top_module: str) -> int:
         return self.stats(netlist, top_module).cells
 
-    def estimate(self, netlist: str | Path, top_module: str) -> float:
+    def estimate(self, netlist: NetlistLike, top_module: str) -> float:
         cells = self.stats(netlist, top_module).cells
         if cells <= 0:
             return 0.0

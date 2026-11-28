@@ -21,8 +21,10 @@ class ReportingAgent(BaseAgent):
         ctx.report = VerificationReport(
             passed=passed, summary=summary, lec_result=ctx.lec_result,
             upf_checks=ctx.upf_checks, metrics=ctx.metrics, steps=ctx.steps,
-            golden_file=str(ctx.rtl_file),
-            revised_file=str(ctx.revised_file or ctx.rtl_file),
+            golden_file=str(ctx.golden_source or ctx.rtl_file),
+            revised_file=str(
+                ctx.revised_source or ctx.revised_file or ctx.golden_source or ctx.rtl_file
+            ),
         )
         return ctx
 

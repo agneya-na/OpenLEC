@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import mkdtemp
 
+from openlec.engine.design_source import NetlistLike, as_source
 from openlec.engine.yosys_runner import YosysRunner, quote_path
 
 DEFAULT_PASSES = (
@@ -28,15 +29,21 @@ class Optimizer:
 
     def apply(
         self,
-        netlist: str | Path,
+        netlist: NetlistLike,
         pass_cmd: str,
         top_module: str,
         iteration: int,
         out_dir: str | Path | None = None,
     ) -> Path:
-        in_netlist = Path(netlist)
-        if not in_netlist.exists():
-            raise RuntimeError(f"Netlist file not found: {in_netlist}")
+        source = as_source(netlist)
+        missing = source.missing()
+        if missing:
+            kind, path = missing[0]
+            raise RuntimeError(f"Netlist {kind} not found: {path}")
+        try:
+            read = source.read_script()
+        except ValueError as exc:  # bad design source option
+            raise RuntimeError(str(exc)) from None
 
         output_dir = Path(out_dir) if out_dir else Path(mkdtemp(prefix="openlec_opt_"))
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -46,8 +53,8 @@ class Optimizer:
         # processes back out and `always @(posedge clk or posedge rst)` is split
         # into two separate always blocks, which changes the design.
         script = (
-            f"read_verilog {quote_path(in_netlist)}\n"
-            f"hierarchy -check -top {top_module}\n"
+            read
+            + f"hierarchy -check -top {top_module}\n"
             "proc\n"
             f"{pass_cmd}\n"
             "opt_clean -purge\n"

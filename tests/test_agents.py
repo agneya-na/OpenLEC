@@ -9,6 +9,7 @@ from openlec.agents.power_agent import PowerAgent
 from openlec.agents.power_intent_agent import PowerIntentAgent
 from openlec.agents.reporting_agent import ReportingAgent
 from openlec.agents.timing_agent import TimingAgent
+from openlec.engine.design_source import DesignSource
 from openlec.models.lec_result import LECResult, LECVerdict
 from openlec.models.metrics import DesignMetrics
 from openlec.models.optimization_step import OptimizationStep, StepVerdict
@@ -78,6 +79,36 @@ class TestParsingAgent:
 
     def test_missing_revised_halts(self, tmp_path):
         ctx = _ctx(tmp_path, revised_file=tmp_path / "missing_syn.v")
+
+        ctx = ParsingAgent().execute(ctx)
+
+        assert ctx.halted is True
+        assert "Revised netlist not found" in ctx.halt_reason
+
+    def test_golden_source_is_used_for_both_sides_by_default(self, tmp_path):
+        extra = tmp_path / "leaf.v"
+        extra.write_text(RTL.replace("top", "leaf"))
+        ctx = _ctx(tmp_path)
+        ctx.golden_source = DesignSource.from_paths([ctx.rtl_file, extra])
+
+        ctx = ParsingAgent().execute(ctx)
+
+        assert not ctx.halted
+        assert ctx.golden_netlist is ctx.golden_source
+        assert ctx.revised_netlist is ctx.golden_source
+
+    def test_missing_include_dir_halts(self, tmp_path):
+        ctx = _ctx(tmp_path)
+        ctx.golden_source = DesignSource.from_paths([ctx.rtl_file], [tmp_path / "no_inc"])
+
+        ctx = ParsingAgent().execute(ctx)
+
+        assert ctx.halted is True
+        assert "Include directory not found" in ctx.halt_reason
+
+    def test_missing_file_in_revised_source_halts(self, tmp_path):
+        ctx = _ctx(tmp_path)
+        ctx.revised_source = DesignSource.from_paths([ctx.rtl_file, tmp_path / "gone.v"])
 
         ctx = ParsingAgent().execute(ctx)
 

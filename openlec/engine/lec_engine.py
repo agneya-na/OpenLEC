@@ -20,9 +20,9 @@ from __future__ import annotations
 
 import logging
 import re
-from pathlib import Path
 
-from openlec.engine.yosys_runner import YosysError, YosysRunner, quote_path
+from openlec.engine.design_source import NetlistLike, as_source
+from openlec.engine.yosys_runner import YosysError, YosysRunner
 from openlec.models.lec_result import LECResult, LECVerdict
 
 logger = logging.getLogger(__name__)
@@ -47,13 +47,13 @@ class LECEngine:
 
     # ------------------------------------------------------------------ scripts
     @staticmethod
-    def _load_pair_script(golden: str | Path, revised: str | Path, top: str) -> str:
+    def _load_pair_script(golden: NetlistLike, revised: NetlistLike, top: str) -> str:
         """READ DESIGN + ANALYZE SETUP: load each side in isolation as `gold` / `gate`."""
 
-        def prepare(path: str | Path, stash: str) -> str:
+        def prepare(design: NetlistLike, stash: str) -> str:
             return (
-                f"read_verilog {quote_path(path)}\n"
-                f"hierarchy -check -top {top}\n"
+                as_source(design).read_script()
+                + f"hierarchy -check -top {top}\n"
                 "proc\n"
                 "flatten\n"
                 "memory\n"
@@ -69,7 +69,7 @@ class LECEngine:
             + f"design -copy-from gate -as gate {top}\n"
         )
 
-    def _prove_script(self, golden: str | Path, revised: str | Path, top: str) -> str:
+    def _prove_script(self, golden: NetlistLike, revised: NetlistLike, top: str) -> str:
         return self._load_pair_script(golden, revised, top) + (
             "equiv_make gold gate equiv\n"
             "hierarchy -top equiv\n"
@@ -78,7 +78,7 @@ class LECEngine:
             "equiv_status\n"
         )
 
-    def _refute_script(self, golden: str | Path, revised: str | Path, top: str) -> str:
+    def _refute_script(self, golden: NetlistLike, revised: NetlistLike, top: str) -> str:
         return self._load_pair_script(golden, revised, top) + (
             "miter -equiv -flatten -make_assert -ignore_gold_x gold gate miter\n"
             "hierarchy -top miter\n"
@@ -88,14 +88,14 @@ class LECEngine:
 
     # ------------------------------------------------------------------ flow
     def run_equivalence_check(
-        self, golden_rtl: str | Path, revised_rtl: str | Path, top_module: str
+        self, golden_rtl: NetlistLike, revised_rtl: NetlistLike, top_module: str
     ) -> LECResult:
         """Executes the complete LEC flow and returns a verdict."""
         try:
             prove_log = self.runner.run_script(
                 self._prove_script(golden_rtl, revised_rtl, top_module)
             )
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:  # Yosys failure or bad design source
             return self._failure("LEC setup failed", exc)
 
         total, unproven = self._parse_status(prove_log)
@@ -186,7 +186,7 @@ class LECEngine:
         return "\n".join(lines)
 
     @staticmethod
-    def _failure(prefix: str, exc: RuntimeError) -> LECResult:
+    def _failure(prefix: str, exc: Exception) -> LECResult:
         logger.error("%s: %s", prefix, exc)
         return LECResult(
             verdict=LECVerdict.ABORT,

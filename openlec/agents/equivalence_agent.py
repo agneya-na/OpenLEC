@@ -18,7 +18,9 @@ class EquivalenceAgent(BaseAgent):
         if ctx.halted:
             return ctx
         result = self.lec.run_equivalence_check(
-            str(ctx.golden_netlist), str(ctx.revised_netlist), ctx.top_module
+            ctx.golden_netlist or ctx.rtl_file,
+            ctx.revised_netlist or ctx.rtl_file,
+            ctx.top_module,
         )
         ctx.lec_result = result
         if result.verdict is LECVerdict.NONEQUIVALENT:
